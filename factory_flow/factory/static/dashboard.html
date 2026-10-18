@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SRE dark factory</title>
+<style>
+  :root { --bg: #0d1117; --panel: #161b22; --text: #c9d1d9; --dim: #8b949e; --border: #21262d;
+          --green: #3fb950; --amber: #d29922; --red: #f85149; --blue: #58a6ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 24px;
+           padding: 12px 20px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  header .title { font-weight: bold; }
+  header .item { color: var(--dim); }
+  header .item b { color: var(--text); font-weight: normal; }
+  .ok { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); }
+  #buddy { margin-left: auto; position: relative; width: 14px; height: 14px; border-radius: 50%;
+           background: var(--green); animation: pulse 2.4s ease-in-out infinite; }
+  #buddy.active { background: var(--amber); }
+  #buddy.attention { background: var(--red); }
+  #badge { position: absolute; top: -9px; right: -12px; min-width: 16px; padding: 0 4px; border-radius: 8px;
+           background: var(--red); color: var(--bg); font-size: 10px; line-height: 16px; text-align: center;
+           display: none; }
+  #buddy.attention #badge { display: block; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.85); } }
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+  #empty { color: var(--dim); text-align: center; padding: 40px; }
+  .card { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); margin-bottom: 14px;
+          overflow: hidden; }
+  .card .head { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px 6px; }
+  .card .sig { font-weight: bold; word-break: break-all; }
+  .status { margin-left: auto; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); white-space: nowrap; }
+  .status.promoted { color: var(--green); border-color: var(--green); }
+  .status.escalated { color: var(--red); border-color: var(--red); }
+  .status.rolled_back { color: var(--amber); border-color: var(--amber); }
+  .status.running { color: var(--blue); border-color: var(--blue); }
+  .meta { color: var(--dim); padding: 0 14px; }
+  .gates { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 14px; }
+  .gate { color: var(--dim); }
+  .gate .m-pass { color: var(--green); } .gate .m-fail { color: var(--red); }
+  .gate .m-unsure { color: var(--amber); } .gate .m-skipped { color: var(--border); }
+  .evidence { margin: 0; padding: 4px 14px 8px 30px; color: var(--dim); }
+  pre { margin: 0 14px 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+        border-radius: 4px; overflow-x: auto; white-space: pre; }
+  .add { color: var(--green); } .del { color: var(--red); }
+  .actions { display: flex; gap: 8px; padding: 0 14px 12px; }
+  button { font: inherit; color: var(--text); background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+           padding: 3px 10px; cursor: pointer; }
+  button:hover { border-color: var(--dim); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.danger { color: var(--red); }
+  .trail { margin: 0 14px 12px; border-top: 1px solid var(--border); }
+  .trail div { padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .panel { border-top: 1px solid var(--border); background: #0f141b; max-height: 0; overflow: hidden;
+           transition: max-height .3s ease; }
+  .panel.open { max-height: 640px; overflow-y: auto; }
+  .panel .msgs { padding: 10px 14px; white-space: pre-wrap; }
+  .panel .q { color: var(--blue); margin-top: 8px; }
+  .panel form { display: flex; gap: 8px; padding: 0 14px 12px; }
+  .panel input { flex: 1; font: inherit; color: var(--text); background: var(--bg); border: 1px solid #30363d;
+                 border-radius: 4px; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="title">SRE dark factory</span>
+  <span class="item">server <b id="server">…</b></span>
+  <span class="item">uptime <b id="uptime">…</b></span>
+  <span class="item">release <b id="release">…</b></span>
+  <span class="item">stage <b id="stage">idle</b></span>
+  <span id="buddy" title="buddy"><span id="badge"></span></span>
+</header>
+<main>
+  <div id="feed"></div>
+  <div id="empty">No incidents yet.</div>
+</main>
+<script>
+"use strict";
+const MARK = { pass: "✓", fail: "✗", unsure: "⚠", skipped: "·" };
+const feed = document.getElementById("feed");
+const cards = new Map();          // incident id -> card element
+let knownStatus = {};
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v; else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v);
+  }
+  for (const c of children) node.append(c instanceof Node ? c : document.createTextNode(String(c ?? "")));
+  return node;
+}
+
+function fmtTime(ts) { return ts ? ts.replace("T", " ").replace("Z", " UTC") : "…"; }
+function fmtUptime(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+}
+
+function diffBlock(text) {
+  const pre = el("pre");
+  for (const line of text.split("\n")) {
+    const cls = line.startsWith("+") && !line.startsWith("+++") ? "add"
+              : line.startsWith("-") && !line.startsWith("---") ? "del" : "";
+    pre.append(el("span", cls ? { class: cls } : {}, line + "\n"));
+  }
+  return pre;
+}
+
+function renderCard(inc) {
+  const gates = el("div", { class: "gates" });
+  for (const [stage, result] of Object.entries(inc.gate_results)) {
+    gates.append(el("span", { class: "gate" }, el("span", { class: "m-" + result }, MARK[result] || "?"), " " + stage));
+  }
+  const evidence = el("ul", { class: "evidence" }, ...inc.evidence_summary.map(line => el("li", {}, line)));
+  const trail = el("div", { class: "trail", hidden: "" });
+  const panel = el("div", { class: "panel" });
+  const actions = el("div", { class: "actions" },
+    el("button", { onclick: () => toggleAudit(inc.id, trail) }, "View audit"),
+    ...(inc.release_tag ? [el("button", { class: "danger", onclick: ev => rollback(inc.release_tag, ev.target) },
+                              `Rollback ${inc.release_tag}`)] : []),
+    el("button", { onclick: () => toggleBuddy(inc.id, panel) }, "Ask buddy"));
+  const card = el("section", { class: "card", id: "card-" + inc.id },
+    el("div", { class: "head" },
+       el("span", { class: "sig" }, inc.signature),
+       el("span", { class: "meta" }, inc.bug_id),
+       el("span", { class: "status " + inc.status }, inc.status.replace("_", " "))),
+    el("div", { class: "meta" }, `${inc.id} · started ${fmtTime(inc.started_at)}`
+       + (inc.ended_at ? ` · ended ${fmtTime(inc.ended_at)}` : ` · at ${inc.current_stage || "…"}`)),
+    gates, evidence,
+    ...(inc.diff_preview ? [diffBlock(inc.diff_preview)] : []),
+    actions, trail, panel);
+  return card;
+}
+
+async function loadIncidents() {
+  const res = await fetch("/api/incidents");
+  if (!res.ok) return;
+  const list = await res.json();
+  document.getElementById("empty").hidden = list.length > 0;
+  list.forEach((inc, i) => {
+    const old = cards.get(inc.id);
+    const fresh = renderCard(inc);
+    if (old) {                    // keep an open audit trail / buddy panel; refresh the rest
+      const keep = old.querySelectorAll(".trail, .panel");
+      fresh.querySelector(".trail").replaceWith(keep[0]);
+      fresh.querySelector(".panel").replaceWith(keep[1]);
+      old.replaceWith(fresh);
+    } else {
+      feed.insertBefore(fresh, feed.children[i] || null);
+    }
+    cards.set(inc.id, fresh);
+  });
+}
+
+async function toggleAudit(id, trail) {
+  if (!trail.hidden) { trail.hidden = true; return; }
+  trail.replaceChildren(el("div", {}, "loading…"));
+  trail.hidden = false;
+  const res = await fetch(`/api/incidents/${encodeURIComponent(id)}/audit`);
+  const entries = res.ok ? await res.json() : [];
+  trail.replaceChildren(...entries.map(e => el("div", {},
+    `#${e.seq} ${fmtTime(e.ts)} ${e.stage} ${e.status || e.outcome || ""} `
+    + (e.reasons || []).join("; ") + ` [${(e.entry_hash || "").slice(0, 10)}]`)));
+}
+
+async function rollback(tag, button) {
+  if (button.dataset.armed !== "1") {         // two-step confirm without a browser dialog
+    button.dataset.armed = "1";
+    button.textContent = `Confirm rollback ${tag}?`;
+    setTimeout(() => { button.dataset.armed = ""; button.textContent = `Rollback ${tag}`; }, 4000);
+    return;
+  }
+  button.disabled = true;
+  button.textContent = `Rolling back ${tag}…`;
+  const res = await fetch(`/api/rollback/${encodeURIComponent(tag)}`, { method: "POST" });
+  const verdict = res.ok ? await res.json() : { status: "error", reasons: [await res.text()] };
+  button.textContent = `Rollback ${verdict.status}: ${(verdict.reasons || [])[0] || ""}`;
+  loadIncidents();
+}
+
+async function ask(id, question, msgs) {
+  if (question) msgs.append(el("div", { class: "q" }, "> " + question));
+  const answer = el("div", {}, "");
+  msgs.append(answer);
+  const res = await fetch("/api/buddy", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ incident_id: id, question }),
+  });
+  if (!res.ok || !res.body) { answer.textContent = `buddy unavailable (${res.status})`; return; }
+  const reader = res.body.getReader(), decoder = new TextDecoder();
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    answer.textContent += decoder.decode(value, { stream: true });
+  }
+}
+
+function toggleBuddy(id, panel) {
+  if (panel.classList.toggle("open") && !panel.dataset.ready) {
+    panel.dataset.ready = "1";
+    const msgs = el("div", { class: "msgs" });
+    const input = el("input", { placeholder: "Ask about this incident…" });
+    const form = el("form", { onsubmit: ev => {
+      ev.preventDefault();
+      const q = input.value.trim();
+      if (q) { input.value = ""; ask(id, q, msgs); }
+    } }, input, el("button", { type: "submit" }, "Ask"));
+    panel.append(msgs, form);
+    ask(id, "", msgs);           // grounded summary first
+  }
+}
+
+function applyStatus(s) {
+  const server = document.getElementById("server");
+  server.textContent = s.server_healthy ? "healthy" : "degraded" + (s.health && s.health.reason ? ` (${s.health.reason})` : "");
+  server.className = s.server_healthy ? "ok" : "bad";
+  document.getElementById("uptime").textContent = fmtUptime(s.uptime_s);
+  document.getElementById("release").textContent =
+    s.latest_release ? `${s.deployed_ref} (latest ${s.latest_release.tag} ${s.latest_release.status})` : s.deployed_ref;
+  const stage = document.getElementById("stage");
+  stage.textContent = s.current_run ? `${s.current_run} (${s.current_run_id})` : (s.paused ? "PAUSED" : "idle");
+  stage.className = s.current_run ? "warn" : (s.paused ? "bad" : "");
+  const buddy = document.getElementById("buddy");
+  buddy.className = s.buddy_state === "idle" ? "" : s.buddy_state;
+  document.getElementById("badge").textContent = s.incident_count || "";
+  const changed = JSON.stringify(s.card_status) !== JSON.stringify(knownStatus);
+  knownStatus = s.card_status;
+  if (changed || s.current_run) loadIncidents();
+}
+
+const events = new EventSource("/api/status");
+events.onmessage = ev => applyStatus(JSON.parse(ev.data));
+loadIncidents();
+</script>
+</body>
+</html>
