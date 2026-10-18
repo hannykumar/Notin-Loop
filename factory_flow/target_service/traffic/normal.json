@@ -1,12 +1,12 @@
 {
   "name": "normal",
-  "rps": 8,
+  "rps": 20,
   "requests": [
     {"method": "GET", "path": "/", "weight": 1},
     {"method": "GET", "path": "/cart/total", "query": {"user": "alice"}, "weight": 3},
     {"method": "GET", "path": "/cart/total", "query": {"user": "bob"}, "weight": 2},
     {"method": "GET", "path": "/cart/total", "query": {"user": "carol"}, "weight": 2},
-    {"method": "GET", "path": "/cart/alice", "weight": 1},
+    {"method": "GET", "path": "/cart/alice", "weight": 3},
     {"method": "GET", "path": "/orders/o-1001", "weight": 2},
     {"method": "GET", "path": "/orders/o-1003", "weight": 2},
     {"method": "GET", "path": "/orders", "query": {"user": "alice"}, "weight": 1},
