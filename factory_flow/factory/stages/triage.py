@@ -48,10 +48,10 @@ def run(state: RunState, *, now: Optional[datetime] = None, releases_path: Optio
 
     try:
         sha, committed_at = (prod_head or _git_prod_head)()
-    except Exception as exc:  # no evidence about prod: own-release check alone decides
+    except Exception as exc:  # missing evidence is unsure, never pass (CLAUDE.md)
         evidence["prod_head_error"] = f"{type(exc).__name__}: {exc}"
-        return Verdict("triage", "pass", ["no own release in window; prod head unknown, human-release check skipped"],
-                       {"no_own_release": True}, evidence)
+        return Verdict("triage", "unsure", ["prod head unknown: cannot rule out a human release"],
+                       {"no_own_release": True, "prod_head_known": False}, evidence)
     evidence.update(prod_head=sha, prod_committed_at=committed_at)
     human = sha not in {r["commit"] for r in releases} and recent(committed_at)
     if human and (tags := _release_tags(sha)):

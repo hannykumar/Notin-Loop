@@ -47,18 +47,10 @@ def pids_path() -> Path:
 
 # ---------------------------------------------------------------- coupling to the core modules
 
-_FALLBACK_WATCHER: Any = None
-
-
 def shared_watcher():
-    """The one Watcher the watcher thread ticks and every stage reads (watcher.default() singleton)."""
-    global _FALLBACK_WATCHER
+    """The one Watcher every stage reads; watcher.default() ticks it in its own daemon thread."""
     from factory import watcher
-    if hasattr(watcher, "default"):
-        return watcher.default()
-    if _FALLBACK_WATCHER is None:  # until watcher.default() lands
-        _FALLBACK_WATCHER = watcher.Watcher()
-    return _FALLBACK_WATCHER
+    return watcher.default()
 
 
 def build_deps(fixer_mode: str = "llm") -> dict:
@@ -68,7 +60,7 @@ def build_deps(fixer_mode: str = "llm") -> dict:
         "watcher": shared_watcher(),                         # triage/investigate/canary/promote/watch/rollback
         "workspace": workspace,                              # qualify, reproduce, fix
         "http_client": httpx.Client(base_url=STABLE_URL, timeout=5),   # investigate's safe replay vs stable
-        "releases_path": releases.LEDGER_PATH,               # triage, investigate
+        "releases_path": releases.ledger_path(),               # triage, investigate
         "fixer": RoutingFixer(fixer_mode),                   # fix
     }
 
@@ -95,6 +87,10 @@ class RoutingFixer:
     @property
     def name(self) -> str:
         return getattr(self.current, "name", "routing")
+
+    @property
+    def uses_llm(self) -> bool:   # run_fix records llm.status() evidence when the chosen fixer used the LLM
+        return bool(getattr(self.current, "uses_llm", False))
 
     def _scripted(self, patch: str) -> ScriptedFixer:
         return ScriptedFixer(self.patches_dir / patch)
@@ -166,7 +162,6 @@ class Agent:
         self.intake = alerts.AlertIntake(self.q.put)
         self.watcher = shared_watcher()
         self.gen: Optional[subprocess.Popen] = None
-        self.thread: Optional[threading.Thread] = None
 
     def __enter__(self) -> "Agent":
         try:
@@ -195,15 +190,12 @@ class Agent:
                                         cwd=str(TARGET_DIR), stdout=out, stderr=subprocess.STDOUT)
             out.close()   # the child keeps its own handle
         self._write_pids()
-        self.thread = threading.Thread(target=self.watcher.run_forever, args=(self.stop_event, self.intake.handle),
-                                       name="watcher", daemon=True)
-        self.thread.start()
+        self.watcher.start(on_breach=self.intake.handle)   # the singleton's own thread; no second tick loop
 
     def stop(self) -> None:
         self.stop_event.set()
         try:
-            if self.thread:
-                self.thread.join(timeout=policy.SCRAPE_INTERVAL_S + 5)
+            self.watcher.on_breach = None                   # stop feeding alerts; the daemon thread dies with us
         finally:
             try:
                 if self.gen and self.gen.poll() is None:
@@ -368,14 +360,8 @@ def cmd_inbox(args) -> int:
 
 def cmd_rollback(args) -> int:
     from factory.stages import rollback
-    w, stop = shared_watcher(), threading.Event()
-    # health verification reads the watcher, so it must tick in this process too
-    threading.Thread(target=w.run_forever, args=(stop, lambda _b: None), daemon=True).start()
-    try:
-        v = rollback.rollback(args.tag, actor="human", reason="manual rollback (cli)", watcher=w,
-                              audit_append=audit.append)
-    finally:
-        stop.set()
+    v = rollback.rollback(args.tag, actor="human", reason="manual rollback (cli)", watcher=shared_watcher(),
+                          audit_append=audit.append)
     print(json.dumps({"status": v.status, "reasons": v.reasons, "deployed_ref": v.evidence.get("deployed_ref"),
                       "inbox_case": v.evidence.get("inbox_case")}, indent=2, default=str))
     return 0 if v.status == "pass" else 1

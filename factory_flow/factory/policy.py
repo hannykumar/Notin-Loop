@@ -17,7 +17,8 @@ ALERT_CONSECUTIVE_WINDOWS = 3
 # --- Timing (normal traffic hits /reports/daily about every 20 s) --------------
 CANARY_WINDOW_S = 12                 # shorter than the /reports/daily interval: canary misses it (demo 3)
 WATCH_WINDOW_S = 45                  # longer than the interval: the watch window catches it
-ROLLBACK_LOOKBACK_S = 120            # alert this soon after an agent release => roll that release back first
+ROLLBACK_LOOKBACK_S = WATCH_WINDOW_S  # alert during an agent release's watch window => roll it back first; once a
+                                     # release has passed its watch window cleanly, later alerts are new bugs
 
 # --- Evidence gate (PRD 7.5) ---------------------------------------------------
 MIN_SIGNATURE_SHARE = 0.7            # passed to evaluate_evidence_gate as minimum_confidence

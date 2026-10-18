@@ -56,11 +56,11 @@ def test_pass_cases(tmp_path):
     assert v.status == "pass" and v.evidence["releases"] == 0
 
 
-def test_unknown_prod_head_passes_on_own_release_check(tmp_path):
+def test_unknown_prod_head_is_unsure(tmp_path):
     def broken():
         raise RuntimeError("no git")
     _, v = run(tmp_path, [], head=broken)
-    assert v.status == "pass" and "prod_head_error" in v.evidence
+    assert v.status == "unsure" and "prod_head_error" in v.evidence
 
 
 def test_fresh_release_0_tag_is_a_known_release_not_a_human_one(tmp_path, monkeypatch):
