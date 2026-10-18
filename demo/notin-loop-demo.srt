@@ -1,0 +1,55 @@
+1
+00:00:00,800 --> 00:00:04,152
+Coding agents can already write plausible bug fixes.
+
+2
+00:00:04,402 --> 00:00:07,479
+But nobody ships one without a human reading it first.
+
+3
+00:00:07,929 --> 00:00:13,052
+Notin-Loop is a dark factory for code fixes: an always-on SRE agent.
+
+4
+00:00:13,302 --> 00:00:17,935
+It watches a live server and runs every incident through deterministic gates.
+
+5
+00:00:18,385 --> 00:00:22,394
+Demo one: we break the cart endpoint, and empty carts start crashing.
+
+6
+00:00:22,644 --> 00:00:27,512
+It investigates, reproduces, fixes, inspects the diff and runs a canary.
+
+7
+00:00:27,762 --> 00:00:31,408
+Every gate passes, so it ships, with nobody touching anything.
+
+8
+00:00:31,858 --> 00:00:35,673
+Demo two: a cache race. The replay fails one time in three.
+
+9
+00:00:35,923 --> 00:00:40,221
+The evidence is unsure, so the agent refuses to guess and escalates.
+
+10
+00:00:40,671 --> 00:00:45,419
+Demo three: a fix passes the tests and the canary, but breaks a rare report.
+
+11
+00:00:45,669 --> 00:00:49,643
+The watch window catches it, and the agent rolls back its own release.
+
+12
+00:00:50,093 --> 00:00:55,192
+Only an unbroken chain of passes changes the server. Anything else stops the line.
+
+13
+00:00:55,442 --> 00:00:59,034
+Every decision goes into a signed, hash-chained audit log.
+
+14
+00:00:59,484 --> 00:01:01,856
+Notin-Loop. Humans on the loop, not in it.
