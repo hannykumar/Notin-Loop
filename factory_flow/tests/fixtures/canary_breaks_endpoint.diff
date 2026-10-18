@@ -1,0 +1,20 @@
+diff --git a/app/cart.py b/app/cart.py
+index 1fb0dad..91389c8 100644
+--- a/app/cart.py
++++ b/app/cart.py
+@@ -31,13 +31,13 @@ def reset() -> None:
+ @router.get("/cart/total")
+ def cart_total(user: str) -> dict[str, Any]:
+     cart = CARTS.get(user, {})
+-    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart["items"])
++    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart.get("items", []))
+     return {"user": user, "total": round(total, 2)}
+ 
+ 
+ @router.get("/cart/{user}")
+ def get_cart(user: str) -> dict[str, Any]:
+-    return {"user": user, "items": CARTS.get(user, {}).get("items", [])}
++    return {"user": user, "items": sorted(CARTS.get(user, {}).get("items", []))}
+ 
+ 
+ @router.post("/cart/{user}/items")
