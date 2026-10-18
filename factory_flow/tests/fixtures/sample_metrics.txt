@@ -1,0 +1,72 @@
+# HELP http_requests_total requests
+# TYPE http_requests_total counter
+http_requests_total{instance="stable",method="GET",route="/cart/total",status="200"} 60.0
+http_requests_total{instance="stable",method="GET",route="/orders/{order_id}",status="200"} 100.0
+http_requests_total{instance="stable",method="GET",route="/cart/total",status="500"} 40.0
+http_requests_total{instance="stable",method="GET",route="/stock/{sku}/available",status="500"} 13.0
+http_requests_total{instance="stable",method="GET",route="/stock/{sku}/available",status="200"} 27.0
+# HELP http_requests_created requests
+# TYPE http_requests_created gauge
+http_requests_created{instance="stable",method="GET",route="/cart/total",status="200"} 1.7923288680642781e+09
+http_requests_created{instance="stable",method="GET",route="/orders/{order_id}",status="200"} 1.792328868064333e+09
+http_requests_created{instance="stable",method="GET",route="/cart/total",status="500"} 1.792328868065613e+09
+http_requests_created{instance="stable",method="GET",route="/stock/{sku}/available",status="500"} 1.79232886806594e+09
+http_requests_created{instance="stable",method="GET",route="/stock/{sku}/available",status="200"} 1.792328868065969e+09
+# HELP http_request_duration_seconds latency
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{instance="stable",le="0.005",route="/cart/total"} 30.0
+http_request_duration_seconds_bucket{instance="stable",le="0.01",route="/cart/total"} 67.0
+http_request_duration_seconds_bucket{instance="stable",le="0.025",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.05",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.075",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.1",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.25",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.5",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.75",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="1.0",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="2.5",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="5.0",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="7.5",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="10.0",route="/cart/total"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="+Inf",route="/cart/total"} 100.0
+http_request_duration_seconds_count{instance="stable",route="/cart/total"} 100.0
+http_request_duration_seconds_sum{instance="stable",route="/cart/total"} 0.78853
+http_request_duration_seconds_bucket{instance="stable",le="0.005",route="/orders/{order_id}"} 26.0
+http_request_duration_seconds_bucket{instance="stable",le="0.01",route="/orders/{order_id}"} 64.0
+http_request_duration_seconds_bucket{instance="stable",le="0.025",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.05",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.075",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.1",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.25",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.5",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="0.75",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="1.0",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="2.5",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="5.0",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="7.5",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="10.0",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_bucket{instance="stable",le="+Inf",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_count{instance="stable",route="/orders/{order_id}"} 100.0
+http_request_duration_seconds_sum{instance="stable",route="/orders/{order_id}"} 0.8270300000000002
+http_request_duration_seconds_bucket{instance="stable",le="0.005",route="/stock/{sku}/available"} 6.0
+http_request_duration_seconds_bucket{instance="stable",le="0.01",route="/stock/{sku}/available"} 22.0
+http_request_duration_seconds_bucket{instance="stable",le="0.025",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.05",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.075",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.1",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.25",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.5",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="0.75",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="1.0",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="2.5",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="5.0",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="7.5",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="10.0",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_bucket{instance="stable",le="+Inf",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_count{instance="stable",route="/stock/{sku}/available"} 40.0
+http_request_duration_seconds_sum{instance="stable",route="/stock/{sku}/available"} 0.3763200000000001
+# HELP http_request_duration_seconds_created latency
+# TYPE http_request_duration_seconds_created gauge
+http_request_duration_seconds_created{instance="stable",route="/cart/total"} 1.792328868064291e+09
+http_request_duration_seconds_created{instance="stable",route="/orders/{order_id}"} 1.7923288680643399e+09
+http_request_duration_seconds_created{instance="stable",route="/stock/{sku}/available"} 1.792328868065946e+09
