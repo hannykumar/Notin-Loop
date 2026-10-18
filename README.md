@@ -1,81 +1,28 @@
-<!-- # SRE Copilot
-
-> **Rebuild status:** The September 2026 workbench rebuild is complete. Final authenticated recovery-screen verification passed on September 17, 2026. This is a focused portfolio prototype, not a production certification.
-
-An evidence-grounded incident investigation and human-approved remediation workbench. A master's portfolio project using Kubernetes, Grafana, Prometheus, Loki, LangGraph and a local LLM.
-
-**Workflow:** alert or scenario → investigation → exact approval → execution → measured recovery. A separate evaluation screen compares deterministic, LLM-only, retrieval and hybrid profiles.
-
-## Run locally
-
-Python 3.11 or 3.12 is recommended. No frontend build or Node service is required.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-bash scripts/start_stack.sh
-```
-
-Open **http://localhost:8090**. The default profile uses SQLite, fixture-backed evidence and deterministic planning. Choose the dependency 503 scenario, review the evidence, then approve a preview or an explicitly labelled fixture simulation.
-
-Local services bind to loopback. Container startup sets `SRE_BIND_HOST=0.0.0.0`. The executor listens on port 8091; configure `EXECUTOR_SHARED_TOKEN` and API authentication before exposing services beyond your machine.
-
-## Use the local LLM
-
-On an 8 GB Mac, start with the small model already used in this project's evaluation:
-
-```bash
-ollama serve
-# In another terminal, if the model is not installed:
-ollama pull llama3.2:1b
-
-bash scripts/start_stack.sh --llm
-```
-
-Use **Runtime & access** to check model availability. Each investigation displays its actual planner backend and any fallback error. A reachable server is not proof of successful inference. The full investigation has a separate `SRE_INVESTIGATION_TIMEOUT_SECONDS` budget, defaulting to 600 seconds.
-
-## Evaluate
-
-Open **Model evaluation** to inspect saved evidence or start a new preview benchmark. Web-triggered benchmarks run in a separate process with their own database and fixture state; results go to ignored `eval_history/`, preserving historical portfolio evidence.
-
-```bash
-PYTHONPATH=. .venv/bin/python -m pytest -q
-PYTHONPATH=. .venv/bin/python -m evaluation.benchmark_matrix \
-  --model-provider ollama --model llama3.2:1b \
-  --output eval_history/comparison.json
-```
-
-Historical evidence covers 20 fixture-derived replays per completed profile and five Kind/Grafana scenario contracts. Hybrid accuracy matched the deterministic baseline and exceeded LLM-only accuracy. These small local results do not establish general production safety. [NORTH_STAR.md](NORTH_STAR.md) records dated evidence and limitations; [docs/REBUILD.md](docs/REBUILD.md) contains the current audit.
-
-Groundedness currently validates two structured claims (alert and diagnosis), not all model-written prose. Confidence is a heuristic ranking, not a calibrated probability. Recovery is judged against catalog thresholds: the demo 503 threshold is 20% errors, which is not a production SLO. Configure service-specific recovery criteria before operational use.
-
-Benchmark accuracy is the workflow's final diagnosis after deterministic controls, including explicitly reported fallbacks. Profiles with tools disabled also lose the evidence required by those controls; their scores do not measure raw model intelligence. The deterministic baseline is the comparison that tests whether adding the model improves this workflow.
-
-## Real Kubernetes lab
-
-```bash
-./lab/scripts/kind_lab_up.sh
-./lab/scripts/kind_lab_agent_up.sh
-./lab/scripts/kind_lab_fault.sh dependency-503
-./lab/scripts/kind_lab_reset.sh
-```
-
-See [lab/k8s/README.md](lab/k8s/README.md). Cases cover OOM, dependency 503, deployment regression, DNS failure and uncertain escalation. Live execution requires explicit approval. GitOps proposals remain `inconclusive` until an external rollout is observed.
-
-For the larger Postgres/Redis container profile, use `docker compose up --build`. Optional database admin UIs require `--profile admin-tools`; the observability demo uses `--profile alert-lab`.
-
-## Read the code
-
-Start with [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md), then [docs/ARCHITECTURE_SIMPLE.md](docs/ARCHITECTURE_SIMPLE.md). Active product code lives in `agent/`, `runtime/`, `integrations/`, `executor/` and `frontend/`. Evaluation checks behavior; lab fixtures, configuration and runbooks define the focused scenarios.
-
-Old implementations remain in ignored `archive/`. Runtime databases, traces, artifacts and evaluation history are generated local data. -->
-
 # Notin-Loop
 
 **An autonomous SRE agent that watches a live server, investigates errors, fixes trivial bugs and ships them with no human approval — and rolls back or escalates whenever a check does not clearly pass.**
 
 Built at the AI Hackathon with Nebius & NVIDIA.
+
+## ▶ Watch the demo (64 seconds)
+
+[![Notin-Loop demo video: the agent ships a fix, refuses an unsure one, and rolls back its own bad release](demo/poster.jpg)](demo/notin-loop-demo.mp4)
+
+**[▶ Play the demo video](demo/notin-loop-demo.mp4)** · [captions (SRT)](demo/notin-loop-demo.srt) · [narration script](demo/narration.md)
+
+A real, recorded run of the dashboard, sped up and narrated, showing all three demos end to end:
+
+1. **Fixed on its own:** a crash on `/cart/total` is investigated, reproduced, fixed, canaried and shipped with no human.
+2. **Refused and escalated:** a flaky cache race fails replay, so the agent will not guess and sends it to a human.
+3. **Undoes its own fix:** a fix passes tests and the canary, breaks a rare endpoint, and the agent rolls it back.
+
+## For judges: three ways to check it
+
+| Time | What | How |
+| --- | --- | --- |
+| 1 min | Watch the video | [demo/notin-loop-demo.mp4](demo/notin-loop-demo.mp4) |
+| 2 min | Click through the real dashboard | **[notin-loop.vercel.app](https://notin-loop.vercel.app)**: a read-only recording of a full run (select each incident to see its evidence, diff and gates) |
+| ~10 min | Run it yourself, no API key needed | [Quickstart](#quickstart) below: 201 tests, then all three demos live with one command |
 
 ---
 
@@ -283,37 +230,53 @@ We name our limits openly because that is what earns trust.
 
 ## Quickstart
 
+Runs entirely on one laptop (macOS or Linux) with **Python 3.11 or 3.12** and git. **No API key is needed:** `--fixer scripted` applies the repo's known-good patches instead of calling the LLM, and every gate, canary, watch window and rollback still runs for real.
+
 ```bash
-# clone
+# 1. clone and install
 git clone https://github.com/hannykumar/Notin-Loop.git
 cd Notin-Loop
-
-# setup
-python3 -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r factory_flow/requirements.txt
-cp factory_flow/.env.example factory_flow/.env   # add your Nebius API key
+cp factory_flow/.env.example factory_flow/.env   # optional: add LLM_API_KEY / LLM_MODEL for the Nebius fixer
 
-# initialise the target service
-cd factory_flow/target_service && bash scripts/init_repo.sh && cd ../..
+# 2. initialise the target service (its own git repo, tagged release-0)
+cd factory_flow/target_service && bash scripts/init_repo.sh && cd ..
 
-# run the tests
-cd factory_flow && pytest -q tests && (cd target_service && pytest -q)
-
-# start the server and agent
-bash scripts/start.sh
-
-# trigger a demo (in another terminal)
-python -m factory.cli break cart     # demo 1: fixed autonomously
-python -m factory.cli break stock    # demo 2: escalated
-python -m factory.cli break 404      # demo 3: promoted then rolled back
-
-# inspect the results
-python -m factory.cli inbox          # escalation cases
-python -m factory.cli replay <run>   # verify the audit chain
-python -m factory.cli report         # generate the HTML report
+# 3. run the tests (185 agent tests + 16 target-service tests)
+pytest -q tests && (cd target_service && pytest -q)
 ```
 
-The dashboard is at `http://localhost:8100` while the agent runs.
+**Option A: all three demos, hands-free (about 3 minutes).** Resets to a clean state, plays demo 1 → 2 → 3 and prints a scoreboard that checks each outcome and the final server state.
+
+```bash
+python -m factory.cli run-all --fixer scripted
+# ends with: [ok] demo1 ... [ok] demo2 ... [ok] demo3 ... bad changes left on the server: 0
+```
+
+**Option B: drive it from the dashboard.**
+
+```bash
+bash scripts/start.sh --fixer scripted --ui 8100     # stable server + traffic + agent + dashboard
+# open http://localhost:8100 and press Break cart, Break stock or Break 404,
+# or from another terminal (with the venv active, inside factory_flow/):
+python -m factory.cli break cart     # demo 1: fixed autonomously
+python -m factory.cli break stock    # demo 2: escalated
+python -m factory.cli break 404      # demo 3: promoted, then rolled back
+python -m factory.cli break normal   # back to healthy traffic
+```
+
+Press Ctrl-C to stop everything. `bash scripts/reset.sh` returns to a clean state (target service back at `release-0`, empty `runs/`).
+
+**Inspect the results** (inside `factory_flow/`):
+
+```bash
+python -m factory.cli inbox                 # escalation cases waiting for a human
+python -m factory.cli replay <run_id>       # verify the audit chain and re-derive that run's decision
+python -m factory.cli report > report.html  # static HTML report of every run
+```
+
+The agent uses ports 8101 (stable) and 8102 (canary); the dashboard uses the port you pass to `--ui` (8099 if you pass none).
 
 ---
 
