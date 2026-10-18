@@ -6,6 +6,8 @@ Built at the AI Hackathon with Nebius & NVIDIA.
 
 ## ▶ Watch the demo (64 seconds)
 
+https://github.com/user-attachments/assets/631a4ff3-db1c-43df-81be-8294187269a6
+
 [![Notin-Loop demo video: the agent ships a fix, refuses an unsure one, and rolls back its own bad release](demo/poster.jpg)](demo/notin-loop-demo.mp4)
 
 **[▶ Play the demo video](demo/notin-loop-demo.mp4)** · [captions (SRT)](demo/notin-loop-demo.srt) · [narration script](demo/narration.md)
