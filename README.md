@@ -193,7 +193,7 @@ The agent rolls back only its own releases. If a human release caused the proble
 | Metrics         | prometheus-client                        |
 | Tests           | pytest with JUnit XML                    |
 | Code control    | git CLI (worktrees, tags, revert)        |
-| LLM             | OpenAI-compatible SDK → Nebius AI Studio |
+| LLM             | Nebius AI Studio                         |
 | Audit integrity | hashlib, hmac (stdlib)                   |
 | Terminal UI     | rich                                     |
 | Report          | jinja2 → static HTML                     |
@@ -320,7 +320,3 @@ The dashboard is at `http://localhost:8100` while the agent runs.
 ## Team
 
 Built by [Hanny Kumar](https://github.com/hannykumar) and [Mayank Choudhary](https://github.com/mayankchoudhary) at the AI Hackathon with Nebius & NVIDIA.
-
-## License
-
-See [LICENSE](LICENSE).
