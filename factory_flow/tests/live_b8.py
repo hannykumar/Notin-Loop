@@ -35,7 +35,7 @@ from factory.stages import inspect_diff, oracle  # noqa: E402
 DEMOS = {
     "run-a": {"patch": "cart_fix.diff", "repro": "test_repro_cart.py", "path": "/cart/total",
               "request": ("/cart/total", {"user": "dave"})},
-    "run-c": {"patch": "orders_helper_fix.diff", "repro": "test_repro_404.py", "path": "/orders/{order_id}",
+    "run-c": {"patch": "orders_helper_fix.diff", "repro": "test_repro_orders.py", "path": "/orders/{order_id}",
               "request": ("/orders/o-9999", {})},
 }
 

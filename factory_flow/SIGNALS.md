@@ -30,4 +30,4 @@ Per-path figures (error rate, p95) are keyed by `route`.
 - `/metrics` on both ports (stable 8101, canary 8102); default histogram buckets.
 - `route` must be the route template for parameterised URLs (`/orders/{order_id}`), never the raw path, or each id becomes its own series.
 - `status` label is the plain integer as a string (`"500"`).
-- Fallback repro tests (used when the LLM is offline, A9): `target_service/fallback_tests/test_repro_<stem of the buggy file>.py`, e.g. `test_repro_cart.py`, `test_repro_orders.py`.
+- Fallback repro tests (used when the LLM is offline, A9): `target_service/fallback_tests/test_repro_<stem of the buggy file>.py`, e.g. `test_repro_cart.py`, `test_repro_orders.py`. They must import `app.main` themselves (A9 lint), not use a conftest fixture.

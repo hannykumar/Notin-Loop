@@ -1,7 +1,7 @@
 """Browser dashboard for the demo: one page + a small JSON API over the same files the CLI uses.
 
     python -m factory.cli start --ui [PORT]      inside the agent process (shares the watcher; live health)
-    python -m factory.dashboard [--port 8090]    standalone: state from runs/ files, buttons still work
+    python -m factory.dashboard [--port 8099]    standalone: state from runs/ files, buttons still work
 
 Patterned on SRE-agent/runtime/api.py + SRE-agent/frontend/ (plain HTML/CSS/JS served by FastAPI, no build).
 """
@@ -129,7 +129,7 @@ def create_app(agent: Any = None) -> FastAPI:
     return app
 
 
-def serve_in_thread(agent: Any, port: int = 8090) -> threading.Thread:
+def serve_in_thread(agent: Any, port: int = 8099) -> threading.Thread:
     """uvicorn in a daemon thread of the calling process (cli start --ui), so it sees the agent's watcher."""
     import uvicorn
     server = uvicorn.Server(uvicorn.Config(create_app(agent), host="127.0.0.1", port=port, log_level="warning"))
@@ -141,7 +141,7 @@ def serve_in_thread(agent: Any, port: int = 8090) -> threading.Thread:
 def main(argv: Optional[list[str]] = None) -> int:
     import uvicorn
     p = argparse.ArgumentParser(prog="python -m factory.dashboard", description="Standalone dashboard (no agent).")
-    p.add_argument("--port", type=int, default=8090)
+    p.add_argument("--port", type=int, default=8099)
     args = p.parse_args(argv)
     uvicorn.run(create_app(), host="127.0.0.1", port=args.port, log_level="warning")
     return 0
