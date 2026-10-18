@@ -1,0 +1,21 @@
+diff --git a/app/cart.py b/app/cart.py
+--- a/app/cart.py
++++ b/app/cart.py
+@@ -9,7 +9,7 @@
+ 
+ router = APIRouter()
+ 
+-PRICES: dict[str, float] = {"apple": 0.5, "bread": 2.25, "coffee": 7.0, "milk": 1.2}
++PRICES: dict[str, float] = {"apple": 0.5, "bread": 2.25, "coffee": 7.5, "milk": 1.2}
+ SEED_CARTS: dict[str, dict[str, Any]] = {
+     "alice": {"items": [{"sku": "apple", "qty": 4}, {"sku": "coffee", "qty": 1}]},
+     "bob": {"items": [{"sku": "bread", "qty": 2}]},
+@@ -31,7 +31,7 @@
+ @router.get("/cart/total")
+ def cart_total(user: str) -> dict[str, Any]:
+     cart = CARTS.get(user, {})
+-    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart["items"])
++    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart.get("items", []))
+     return {"user": user, "total": round(total, 2)}
+ 
+ 

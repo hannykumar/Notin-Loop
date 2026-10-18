@@ -1,0 +1,8 @@
+{
+  "name": "break_stock",
+  "base": "normal",
+  "requests": [
+    {"method": "GET", "path": "/stock/apple/available", "weight": 3},
+    {"method": "GET", "path": "/stock/bread/available", "weight": 2}
+  ]
+}
