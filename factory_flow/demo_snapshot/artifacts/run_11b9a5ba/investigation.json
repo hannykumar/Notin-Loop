@@ -1,0 +1,320 @@
+{
+  "ledger": [
+    {
+      "evidence_id": "E000",
+      "kind": "alert",
+      "tool": "alert_webhook",
+      "source": "watcher",
+      "observed_at": "2026-10-18T16:01:09.401288+00:00",
+      "time_range": {
+        "start": "2026-10-18T16:01:05.273526Z",
+        "end": ""
+      },
+      "freshness": "current",
+      "source_reliability": 0.95,
+      "status": "ok",
+      "query": {},
+      "payload": {
+        "source_type": "generic",
+        "incident_id": "ALERT-9B31F0E7EF62",
+        "scenario": "code_bug",
+        "alertname": "HighErrorRate",
+        "summary": "5xx rate 14.925% on /cart/total for 6.04489 s",
+        "status": "firing",
+        "fingerprint": "0058de654dd1d58a8ff2f495cf54ce58fa5e7d7bea4c31722ef1809ade7fa735",
+        "starts_at": "2026-10-18T16:01:05.273526Z",
+        "labels": {
+          "path": "/cart/total",
+          "instance": "stable",
+          "service": "target_service",
+          "severity": "page"
+        },
+        "annotations": {},
+        "source": {
+          "alertname": "HighErrorRate",
+          "service": "target_service",
+          "severity": "page",
+          "status": "firing",
+          "starts_at": "2026-10-18T16:01:05.273526Z",
+          "labels": {
+            "path": "/cart/total",
+            "instance": "stable"
+          },
+          "summary": "5xx rate 14.925% on /cart/total for 6.04489 s",
+          "fingerprint": "0058de654dd1d58a8ff2f495cf54ce58fa5e7d7bea4c31722ef1809ade7fa735",
+          "scenario": "code_bug"
+        },
+        "breach": {
+          "route": "/cart/total",
+          "instance": "stable",
+          "error_rate_percent": 14.925,
+          "p95_latency_ms": 5.0,
+          "samples": 67,
+          "started_at": "2026-10-18T16:01:05.273526Z",
+          "detected_at": "2026-10-18T16:01:09.318414Z"
+        }
+      },
+      "truncated": false,
+      "error": ""
+    },
+    {
+      "evidence_id": "E001",
+      "kind": "tool_observation",
+      "tool": "server_log",
+      "source": "mcp",
+      "observed_at": "2026-10-18T16:01:09.401315+00:00",
+      "time_range": {
+        "start": "2026-10-18T16:00:55.273526Z",
+        "end": "2026-10-18T16:01:09.318414Z"
+      },
+      "freshness": "current",
+      "source_reliability": 0.9,
+      "status": "ok",
+      "query": {
+        "since": "2026-10-18T16:00:55.273526Z",
+        "until": "2026-10-18T16:01:09.318414Z",
+        "route": "/cart/total"
+      },
+      "payload": {
+        "signature_counts": {
+          "KeyError@app/cart.py:cart_total": 10
+        },
+        "errors": 10,
+        "dominant_signature": "KeyError@app/cart.py:cart_total",
+        "dominant_share": 1.0,
+        "sample_line": {
+          "exception_type": "KeyError",
+          "instance": "stable",
+          "latency_ms": 3.19,
+          "method": "GET",
+          "path": "/cart/total",
+          "query": {
+            "user": "dave"
+          },
+          "route": "/cart/total",
+          "status": 500,
+          "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/cart.py\", line 34, in cart_total\n    total = sum(PRICES.get(item[\"sku\"], 0.0) * item[\"qty\"] for item in cart[\"items\"])\n                                                                       ~~~~^^^^^^^^^\nKeyError: 'items'\n",
+          "ts": "2026-10-18T16:01:08.701Z"
+        }
+      },
+      "truncated": false,
+      "duration_ms": 0.0,
+      "error": ""
+    },
+    {
+      "evidence_id": "E002",
+      "kind": "tool_observation",
+      "tool": "metrics_scrape",
+      "source": "mcp",
+      "observed_at": "2026-10-18T16:01:09.401342+00:00",
+      "time_range": {
+        "start": "2026-10-18T16:00:55.273526Z",
+        "end": "2026-10-18T16:01:09.318414Z"
+      },
+      "freshness": "current",
+      "source_reliability": 0.9,
+      "status": "ok",
+      "query": {
+        "route": "/cart/total",
+        "instance": "stable"
+      },
+      "payload": {
+        "current": {
+          "metrics": {
+            "error_rate_percent": 14.925,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "/cart/total",
+          "window_s": 10.137968,
+          "samples": 67
+        },
+        "baseline": {
+          "metrics": {
+            "error_rate_percent": 0.0,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "/cart/total",
+          "window_s": 10.112241,
+          "samples": 57
+        }
+      },
+      "truncated": false,
+      "duration_ms": 0.0,
+      "error": ""
+    },
+    {
+      "evidence_id": "E003",
+      "kind": "tool_observation",
+      "tool": "live_replay",
+      "source": "mcp",
+      "observed_at": "2026-10-18T16:01:09.401350+00:00",
+      "time_range": {
+        "start": "2026-10-18T16:00:55.273526Z",
+        "end": "2026-10-18T16:01:09.318414Z"
+      },
+      "freshness": "current",
+      "source_reliability": 0.9,
+      "status": "ok",
+      "query": {
+        "method": "GET",
+        "path": "/cart/total",
+        "query": {
+          "user": "dave"
+        },
+        "body": null,
+        "safe": true
+      },
+      "payload": {
+        "attempts": [
+          {
+            "status": 500,
+            "signature": "KeyError@app/cart.py:cart_total",
+            "failed": true
+          },
+          {
+            "status": 500,
+            "signature": "KeyError@app/cart.py:cart_total",
+            "failed": true
+          },
+          {
+            "status": 500,
+            "signature": "KeyError@app/cart.py:cart_total",
+            "failed": true
+          }
+        ],
+        "failures": 3
+      },
+      "truncated": false,
+      "duration_ms": 0.0,
+      "error": ""
+    },
+    {
+      "evidence_id": "E004",
+      "kind": "tool_observation",
+      "tool": "release_ledger",
+      "source": "mcp",
+      "observed_at": "2026-10-18T16:01:09.401370+00:00",
+      "time_range": {
+        "start": "2026-10-18T16:00:55.273526Z",
+        "end": "2026-10-18T16:01:09.318414Z"
+      },
+      "freshness": "current",
+      "source_reliability": 0.9,
+      "status": "ok",
+      "query": {
+        "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/releases.json"
+      },
+      "payload": {
+        "releases": 0,
+        "summary": "no agent releases"
+      },
+      "truncated": false,
+      "duration_ms": 0.0,
+      "error": ""
+    }
+  ],
+  "graph": [
+    {
+      "evidence_id": "E000",
+      "source_type": "alert",
+      "source_name": "watcher",
+      "summary": "{\"source_type\": \"generic\", \"incident_id\": \"ALERT-9B31F0E7EF62\", \"scenario\": \"code_bug\", \"alertname\": \"HighErrorRate\", \"summary\": \"5xx rate 14.925% on /cart/total for 6.04489 s\", \"status\": \"firing\", \"fingerprint\": \"0058de654dd1d58a8ff2f495cf54ce58fa5e7d7bea4c31722ef1809ade7fa735\",",
+      "freshness": "current",
+      "source_reliability": 0.95
+    },
+    {
+      "evidence_id": "E001",
+      "source_type": "logs",
+      "source_name": "server_log",
+      "summary": "{\"signature_counts\": {\"KeyError@app/cart.py:cart_total\": 10}, \"errors\": 10, \"dominant_signature\": \"KeyError@app/cart.py:cart_total\", \"dominant_share\": 1.0, \"sample_line\": {\"exception_type\": \"KeyError\", \"instance\": \"stable\", \"latency_ms\": 3.19, \"method\": \"GET\", \"path\": \"/cart/tota",
+      "freshness": "current",
+      "source_reliability": 0.9
+    },
+    {
+      "evidence_id": "E002",
+      "source_type": "metrics",
+      "source_name": "metrics_scrape",
+      "summary": "{\"current\": {\"metrics\": {\"error_rate_percent\": 14.925, \"p95_latency_ms\": 5.0}, \"instance\": \"stable\", \"path\": \"/cart/total\", \"window_s\": 10.137968, \"samples\": 67}, \"baseline\": {\"metrics\": {\"error_rate_percent\": 0.0, \"p95_latency_ms\": 5.0}, \"instance\": \"stable\", \"path\": \"/cart/tota",
+      "freshness": "current",
+      "source_reliability": 0.9
+    },
+    {
+      "evidence_id": "E003",
+      "source_type": "replay",
+      "source_name": "live_replay",
+      "summary": "{\"attempts\": [{\"status\": 500, \"signature\": \"KeyError@app/cart.py:cart_total\", \"failed\": true}, {\"status\": 500, \"signature\": \"KeyError@app/cart.py:cart_total\", \"failed\": true}, {\"status\": 500, \"signature\": \"KeyError@app/cart.py:cart_total\", \"failed\": true}], \"failures\": 3}",
+      "freshness": "current",
+      "source_reliability": 0.9
+    },
+    {
+      "evidence_id": "E004",
+      "source_type": "releases",
+      "source_name": "release_ledger",
+      "summary": "{\"releases\": 0, \"summary\": \"no agent releases\"}",
+      "freshness": "current",
+      "source_reliability": 0.9
+    }
+  ],
+  "candidate": {
+    "score": 1.0,
+    "citations": [
+      "E001",
+      "E002",
+      "E003"
+    ],
+    "contradicting_signals": [],
+    "signature": "KeyError@app/cart.py:cart_total"
+  },
+  "gate": {
+    "passed": true,
+    "checks": {
+      "confidence": true,
+      "margin": true,
+      "independent_evidence": true,
+      "no_critical_contradictions": true,
+      "citations_present": true
+    },
+    "confidence": 1.0,
+    "margin": 1.0,
+    "independent_source_count": 3,
+    "critical_contradictions": []
+  },
+  "checks": {
+    "dominant_share": true,
+    "replay_safe": true,
+    "replay_reproduced": true,
+    "source_types": true,
+    "files_in_app": true,
+    "evidence_gate": true
+  },
+  "bug_report": {
+    "id": "BUG-63A60235",
+    "alert_id": "ALERT-9B31F0E7EF62",
+    "signature": "KeyError@app/cart.py:cart_total",
+    "exception_type": "KeyError",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/cart.py\", line 34, in cart_total\n    total = sum(PRICES.get(item[\"sku\"], 0.0) * item[\"qty\"] for item in cart[\"items\"])\n                                                                       ~~~~^^^^^^^^^\nKeyError: 'items'\n",
+    "sample_request": {
+      "method": "GET",
+      "path": "/cart/total",
+      "query": {
+        "user": "dave"
+      },
+      "body": null
+    },
+    "files": [
+      "app/cart.py",
+      "app/sre_plugin.py"
+    ],
+    "error_share": 1.0,
+    "replay_failures": 3,
+    "evidence_ids": [
+      "E000",
+      "E001",
+      "E002",
+      "E003",
+      "E004"
+    ]
+  }
+}

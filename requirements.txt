@@ -1,0 +1,6 @@
+# Vercel "dashboard" service (main.py): only what factory_flow's dashboard imports at runtime, pinned as in
+# factory_flow/requirements.txt. The full dev/agent set stays in factory_flow/requirements.txt.
+fastapi==0.115.0
+httpx==0.28.1
+openai==3.35.1
+prometheus-client==0.21.0

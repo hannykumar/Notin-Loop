@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.026" timestamp="2026-10-18T18:01:21.255708+02:00" hostname="Hannys-MacBook-Pro.local"><testcase classname="oracle_repro.test_repro_bug_63a60235" name="test_cart_total_for_user_without_cart_is_not_server_error" file="oracle_repro/test_repro_bug_63a60235.py" line="5" time="0.006"><failure message="assert 500 &lt; 500&#10; +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code">def test_cart_total_for_user_without_cart_is_not_server_error():
+        client = TestClient(app)
+        response = client.get("/cart/total", params={"user": "dave"})
+&gt;       assert response.status_code &lt; 500
+E       assert 500 &lt; 500
+E        +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code
+
+oracle_repro/test_repro_bug_63a60235.py:9: AssertionError</failure></testcase></testsuite></testsuites>

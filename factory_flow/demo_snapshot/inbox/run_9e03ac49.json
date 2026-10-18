@@ -1,0 +1,330 @@
+{
+  "run_id": "run_9e03ac49",
+  "created_at": "2026-10-18T16:02:54Z",
+  "severity": "normal",
+  "stage": "investigate",
+  "status": "unsure",
+  "reason": "replay reproduced 2/3 with the same signature; evidence gate failed: ['no_critical_contradictions']",
+  "alert": {
+    "source_type": "generic",
+    "incident_id": "ALERT-A7EE0680BBF3",
+    "scenario": "code_bug",
+    "alertname": "HighErrorRate",
+    "summary": "5xx rate 36.842% on /stock/{sku}/available for 6.04929 s",
+    "status": "firing",
+    "fingerprint": "9bc8e5580141c81eeade62b5723b93c4cbb56f61428626c5faf81f73cdd09562",
+    "starts_at": "2026-10-18T16:02:50.585160Z",
+    "labels": {
+      "path": "/stock/{sku}/available",
+      "instance": "stable",
+      "service": "target_service",
+      "severity": "page"
+    },
+    "annotations": {},
+    "source": {
+      "alertname": "HighErrorRate",
+      "service": "target_service",
+      "severity": "page",
+      "status": "firing",
+      "starts_at": "2026-10-18T16:02:50.585160Z",
+      "labels": {
+        "path": "/stock/{sku}/available",
+        "instance": "stable"
+      },
+      "summary": "5xx rate 36.842% on /stock/{sku}/available for 6.04929 s",
+      "fingerprint": "9bc8e5580141c81eeade62b5723b93c4cbb56f61428626c5faf81f73cdd09562",
+      "scenario": "code_bug"
+    },
+    "breach": {
+      "route": "/stock/{sku}/available",
+      "instance": "stable",
+      "error_rate_percent": 36.842,
+      "p95_latency_ms": 50.0,
+      "samples": 19,
+      "started_at": "2026-10-18T16:02:50.585160Z",
+      "detected_at": "2026-10-18T16:02:54.634448Z"
+    }
+  },
+  "bug": null,
+  "verdicts": [
+    {
+      "stage": "triage",
+      "status": "pass",
+      "reasons": [
+        "no recent release"
+      ],
+      "checks": {
+        "no_own_release": true,
+        "no_recent_human_release": true
+      },
+      "evidence": {
+        "releases_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/releases.json",
+        "releases": 1,
+        "alert_at": "2026-10-18T16:02:50.585160+00:00",
+        "prod_head": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+        "prod_committed_at": "2026-10-18T18:01:35+02:00"
+      },
+      "route": null
+    },
+    {
+      "stage": "investigate",
+      "status": "unsure",
+      "reasons": [
+        "replay reproduced 2/3 with the same signature",
+        "evidence gate failed: ['no_critical_contradictions']"
+      ],
+      "checks": {
+        "dominant_share": true,
+        "replay_safe": true,
+        "replay_reproduced": false,
+        "source_types": true,
+        "files_in_app": true,
+        "evidence_gate": false
+      },
+      "evidence": {
+        "investigation_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_9e03ac49/investigation.json",
+        "investigation_sha256": "71f01d13ac84c8228f92f7c5597326449cb4321e9f31b3fa03b12146197c7051",
+        "bug_report_sha256": "633c6bf70150a62db0438ae2d4bf4e5e87f24b4efeea3f6bb42693052990c360",
+        "gate": {
+          "passed": false,
+          "checks": {
+            "confidence": true,
+            "margin": true,
+            "independent_evidence": true,
+            "no_critical_contradictions": false,
+            "citations_present": true
+          },
+          "confidence": 1.0,
+          "margin": 1.0,
+          "independent_source_count": 3,
+          "critical_contradictions": [
+            "critical: replay reproduced only 2/3"
+          ]
+        },
+        "signature_counts": {
+          "KeyError@app/stock.py:stock_available": 7
+        },
+        "replay_attempts": [
+          {
+            "status": 500,
+            "signature": "KeyError@app/stock.py:stock_available",
+            "failed": true
+          },
+          {
+            "status": 500,
+            "signature": "KeyError@app/stock.py:stock_available",
+            "failed": true
+          },
+          {
+            "status": 200,
+            "signature": null,
+            "failed": false
+          }
+        ],
+        "bug_report": {
+          "id": "BUG-8BA65C18",
+          "alert_id": "ALERT-A7EE0680BBF3",
+          "signature": "KeyError@app/stock.py:stock_available",
+          "exception_type": "KeyError",
+          "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/stock.py\", line 49, in stock_available\n    return {\"sku\": sku, \"available\": _CACHE[sku]}\n                                     ~~~~~~^^^^^\nKeyError: 'bread'\n",
+          "sample_request": {
+            "method": "GET",
+            "path": "/stock/bread/available",
+            "query": {},
+            "body": null
+          },
+          "files": [
+            "app/stock.py",
+            "app/sre_plugin.py"
+          ],
+          "error_share": 1.0,
+          "replay_failures": 2,
+          "evidence_ids": [
+            "E000",
+            "E001",
+            "E002",
+            "E003",
+            "E004"
+          ]
+        },
+        "window": {
+          "since": "2026-10-18T16:02:40.585160Z",
+          "until": "2026-10-18T16:02:54.634448Z",
+          "route": "/stock/{sku}/available"
+        }
+      },
+      "route": null
+    }
+  ],
+  "stopping_verdict": {
+    "stage": "investigate",
+    "status": "unsure",
+    "reasons": [
+      "replay reproduced 2/3 with the same signature",
+      "evidence gate failed: ['no_critical_contradictions']"
+    ],
+    "checks": {
+      "dominant_share": true,
+      "replay_safe": true,
+      "replay_reproduced": false,
+      "source_types": true,
+      "files_in_app": true,
+      "evidence_gate": false
+    },
+    "evidence": {
+      "investigation_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_9e03ac49/investigation.json",
+      "investigation_sha256": "71f01d13ac84c8228f92f7c5597326449cb4321e9f31b3fa03b12146197c7051",
+      "bug_report_sha256": "633c6bf70150a62db0438ae2d4bf4e5e87f24b4efeea3f6bb42693052990c360",
+      "gate": {
+        "passed": false,
+        "checks": {
+          "confidence": true,
+          "margin": true,
+          "independent_evidence": true,
+          "no_critical_contradictions": false,
+          "citations_present": true
+        },
+        "confidence": 1.0,
+        "margin": 1.0,
+        "independent_source_count": 3,
+        "critical_contradictions": [
+          "critical: replay reproduced only 2/3"
+        ]
+      },
+      "signature_counts": {
+        "KeyError@app/stock.py:stock_available": 7
+      },
+      "replay_attempts": [
+        {
+          "status": 500,
+          "signature": "KeyError@app/stock.py:stock_available",
+          "failed": true
+        },
+        {
+          "status": 500,
+          "signature": "KeyError@app/stock.py:stock_available",
+          "failed": true
+        },
+        {
+          "status": 200,
+          "signature": null,
+          "failed": false
+        }
+      ],
+      "bug_report": {
+        "id": "BUG-8BA65C18",
+        "alert_id": "ALERT-A7EE0680BBF3",
+        "signature": "KeyError@app/stock.py:stock_available",
+        "exception_type": "KeyError",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/stock.py\", line 49, in stock_available\n    return {\"sku\": sku, \"available\": _CACHE[sku]}\n                                     ~~~~~~^^^^^\nKeyError: 'bread'\n",
+        "sample_request": {
+          "method": "GET",
+          "path": "/stock/bread/available",
+          "query": {},
+          "body": null
+        },
+        "files": [
+          "app/stock.py",
+          "app/sre_plugin.py"
+        ],
+        "error_share": 1.0,
+        "replay_failures": 2,
+        "evidence_ids": [
+          "E000",
+          "E001",
+          "E002",
+          "E003",
+          "E004"
+        ]
+      },
+      "window": {
+        "since": "2026-10-18T16:02:40.585160Z",
+        "until": "2026-10-18T16:02:54.634448Z",
+        "route": "/stock/{sku}/available"
+      }
+    },
+    "route": null
+  },
+  "evidence": {
+    "artifacts_dir": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_9e03ac49",
+    "triage": {
+      "releases_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/releases.json",
+      "releases": 1,
+      "alert_at": "2026-10-18T16:02:50.585160+00:00",
+      "prod_head": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "prod_committed_at": "2026-10-18T18:01:35+02:00"
+    },
+    "investigate": {
+      "investigation_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_9e03ac49/investigation.json",
+      "investigation_sha256": "71f01d13ac84c8228f92f7c5597326449cb4321e9f31b3fa03b12146197c7051",
+      "bug_report_sha256": "633c6bf70150a62db0438ae2d4bf4e5e87f24b4efeea3f6bb42693052990c360",
+      "gate": {
+        "passed": false,
+        "checks": {
+          "confidence": true,
+          "margin": true,
+          "independent_evidence": true,
+          "no_critical_contradictions": false,
+          "citations_present": true
+        },
+        "confidence": 1.0,
+        "margin": 1.0,
+        "independent_source_count": 3,
+        "critical_contradictions": [
+          "critical: replay reproduced only 2/3"
+        ]
+      },
+      "signature_counts": {
+        "KeyError@app/stock.py:stock_available": 7
+      },
+      "replay_attempts": [
+        {
+          "status": 500,
+          "signature": "KeyError@app/stock.py:stock_available",
+          "failed": true
+        },
+        {
+          "status": 500,
+          "signature": "KeyError@app/stock.py:stock_available",
+          "failed": true
+        },
+        {
+          "status": 200,
+          "signature": null,
+          "failed": false
+        }
+      ],
+      "bug_report": {
+        "id": "BUG-8BA65C18",
+        "alert_id": "ALERT-A7EE0680BBF3",
+        "signature": "KeyError@app/stock.py:stock_available",
+        "exception_type": "KeyError",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/stock.py\", line 49, in stock_available\n    return {\"sku\": sku, \"available\": _CACHE[sku]}\n                                     ~~~~~~^^^^^\nKeyError: 'bread'\n",
+        "sample_request": {
+          "method": "GET",
+          "path": "/stock/bread/available",
+          "query": {},
+          "body": null
+        },
+        "files": [
+          "app/stock.py",
+          "app/sre_plugin.py"
+        ],
+        "error_share": 1.0,
+        "replay_failures": 2,
+        "evidence_ids": [
+          "E000",
+          "E001",
+          "E002",
+          "E003",
+          "E004"
+        ]
+      },
+      "window": {
+        "since": "2026-10-18T16:02:40.585160Z",
+        "until": "2026-10-18T16:02:54.634448Z",
+        "route": "/stock/{sku}/available"
+      }
+    }
+  }
+}

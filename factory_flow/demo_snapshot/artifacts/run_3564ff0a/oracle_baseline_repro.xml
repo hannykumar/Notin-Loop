@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.045" timestamp="2026-10-18T18:03:44.970608+02:00" hostname="Hannys-MacBook-Pro.local"><testcase classname="oracle_repro.test_repro_bug_d804c2dc" name="test_read_missing_order_does_not_return_server_error" file="oracle_repro/test_repro_bug_d804c2dc.py" line="5" time="0.007"><failure message="assert 500 &lt; 500&#10; +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x1054c4200&gt;
+
+    def test_read_missing_order_does_not_return_server_error(monkeypatch):
+        monkeypatch.setattr("app.sre_plugin._write_line", lambda entry: None)
+        client = TestClient(app)
+        response = client.get("/orders/o-9999", params={})
+&gt;       assert response.status_code &lt; 500
+E       assert 500 &lt; 500
+E        +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code
+
+oracle_repro/test_repro_bug_d804c2dc.py:10: AssertionError</failure></testcase></testsuite></testsuites>

@@ -234,6 +234,9 @@
            opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
   #toast.show { opacity: 1; transform: none; }
   #toast.bad { border-color: var(--red); }
+  #snapshot-banner { margin: 12px 0 0; padding: 8px 14px; border-radius: 8px; background: var(--blue-bg); color: var(--blue);
+                     font-weight: 700; border: 1px solid var(--blue); }
+  body.snapshot .demo, body.snapshot #kill, body.snapshot .rel button { opacity: .45; cursor: not-allowed; }
   body.offline .topbar::after { content: "⚠ dashboard offline: reconnecting…"; position: absolute; right: 0; bottom: -30px;
                                 color: var(--amber); font-weight: 700; font-size: var(--fs-xs); }
 </style>
@@ -257,6 +260,7 @@
     <button id="kill" title="Kill switch: stop the line">■ Pause line</button>
   </div>
 </header>
+<div id="snapshot-banner" role="note" hidden></div>
 
 <section class="demos" aria-label="Demo controls">
   <div class="head"><span class="lbl">Demo controls</span><small>break the live service, then watch</small></div>
@@ -605,7 +609,8 @@ function renderReleases(rels, deployed) {
     return el("div", { class: "rel" },
       el("div", {}, el("span", { class: "tag" }, r.tag), r.tag === deployed ? el("span", { class: "live" }, "● LIVE") : "",
          " ", el("span", { class: "badge " + cls }, r.status.replace("_", " "))),
-      can ? el("button", { onclick: (ev) => rollback(r.tag, ev.currentTarget) }, "↶ Roll back")
+      can ? el("button", { onclick: (ev) => rollback(r.tag, ev.currentTarget), disabled: !!(status && status.snapshot),
+                           title: status && status.snapshot ? "Recorded demo: read-only" : null }, "↶ Roll back")
           : el("span", { class: "dim" }, rb === "running" ? "rolling back…" : ""),
       el("div", { class: "meta" }, `${r.run_id} · ${hhmm(r.promoted_at)}` + (rb && rb !== "running" ? ` · manual rollback: ${rb}` : "")));
   }));
@@ -635,6 +640,13 @@ function applyStatus(s) {
   const changed = first || JSON.stringify(s.card_status) !== JSON.stringify(status.card_status);
   status = s;
   document.body.classList.remove("offline");
+  const rec = s.snapshot;   // read-only recorded demo: show the banner, keep the controls visible but disabled
+  document.body.classList.toggle("snapshot", !!rec);
+  $("snapshot-banner").hidden = !rec;
+  if (rec) $("snapshot-banner").textContent = `Recorded demo · ${rec.recorded_at || "unknown time"} · the live demo runs on the laptop`;
+  document.querySelectorAll("[data-break], #kill").forEach((b) => {
+    b.disabled = !!rec; b.title = rec ? "Recorded demo: read-only" : (b.id === "kill" ? "Kill switch: stop the line" : "");
+  });
 
   const h = s.health || {};
   const err = h.error_rate_percent, p95 = h.p95_latency_ms;
@@ -686,6 +698,7 @@ $("kill").addEventListener("click", async () => {
   } catch (e) { toast("Kill switch failed: " + e.message, true); }
 });
 $("report").addEventListener("click", async () => {
+  if (status && status.snapshot) { window.open("/report", "_blank"); return; }   // recorded report, nothing to write
   const win = window.open("about:blank", "_blank");
   try { await post("/api/report"); if (win) win.location = "/report"; else window.location = "/report"; }
   catch (e) { if (win) win.close(); toast("Report failed: " + e.message, true); }
@@ -703,7 +716,8 @@ window.addEventListener("resize", () => { shownCardKey = ""; refreshSelected(); 
 buildPipe();
 const events = new EventSource("/api/status");
 events.onmessage = (ev) => applyStatus(JSON.parse(ev.data));
-events.onerror = () => document.body.classList.add("offline");
+// A recorded demo closes the stream after each event by design; EventSource reconnects, so that is not offline.
+events.onerror = () => { if (!(status && status.snapshot)) document.body.classList.add("offline"); };
 loadIncidents();
 </script>
 </body>

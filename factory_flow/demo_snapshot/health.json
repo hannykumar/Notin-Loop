@@ -1,0 +1,9 @@
+{
+  "healthy": true,
+  "reason": "",
+  "worst_error_rate_percent": 0.0,
+  "error_rate_percent": 0.0,
+  "p95_latency_ms": 5.0,
+  "alert_error_rate_percent": 5.0,
+  "slo_p95_ms": 500.0
+}
