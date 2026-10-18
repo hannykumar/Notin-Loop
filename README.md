@@ -8,24 +8,6 @@ Built at the AI Hackathon with Nebius & NVIDIA.
 
 https://github.com/user-attachments/assets/631a4ff3-db1c-43df-81be-8294187269a6
 
-[![Notin-Loop demo video: the agent ships a fix, refuses an unsure one, and rolls back its own bad release](demo/poster.jpg)](demo/notin-loop-demo.mp4)
-
-**[▶ Play the demo video](demo/notin-loop-demo.mp4)** · [captions (SRT)](demo/notin-loop-demo.srt) · [narration script](demo/narration.md)
-
-A real, recorded run of the dashboard, sped up and narrated, showing all three demos end to end:
-
-1. **Fixed on its own:** a crash on `/cart/total` is investigated, reproduced, fixed, canaried and shipped with no human.
-2. **Refused and escalated:** a flaky cache race fails replay, so the agent will not guess and sends it to a human.
-3. **Undoes its own fix:** a fix passes tests and the canary, breaks a rare endpoint, and the agent rolls it back.
-
-## For judges: three ways to check it
-
-| Time | What | How |
-| --- | --- | --- |
-| 1 min | Watch the video | [demo/notin-loop-demo.mp4](demo/notin-loop-demo.mp4) |
-| 2 min | Click through the real dashboard | **[notin-loop.vercel.app](https://notin-loop.vercel.app)**: a read-only recording of a full run (select each incident to see its evidence, diff and gates) |
-| ~10 min | Run it yourself, no API key needed | [Quickstart](#quickstart) below: 201 tests, then all three demos live with one command |
-
 ---
 
 ## The Problem
