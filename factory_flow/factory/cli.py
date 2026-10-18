@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import queue
+import signal
 import subprocess
 import sys
 import threading
@@ -282,8 +283,20 @@ def print_scoreboard(rows: list[dict], bad: int) -> None:
 
 # ---------------------------------------------------------------- commands
 
+def _interrupt(*_args) -> None:
+    raise KeyboardInterrupt
+
+
+def stop_on_signals() -> None:
+    """SIGTERM (kill) and SIGINT (Ctrl-C, even if a parent shell set it to ignored) both run Agent.stop(),
+    so stable/canary/traffic never outlive the agent."""
+    signal.signal(signal.SIGTERM, _interrupt)
+    signal.signal(signal.SIGINT, _interrupt)
+
+
 def cmd_start(args) -> int:
     from rich.live import Live
+    stop_on_signals()
     try:
         with Agent(traffic=not args.no_traffic) as agent, \
                 Live(get_renderable=agent.frame, refresh_per_second=2):
@@ -317,6 +330,7 @@ def _wait_run(results: list, start: int, path: str, timeout_s: float):
 
 
 def cmd_run_all(args) -> int:
+    stop_on_signals()
     subprocess.run([str(RESET_SH)], check=True)
     scenarios = json.loads(SCENARIOS_PATH.read_text())
     results: list = []
