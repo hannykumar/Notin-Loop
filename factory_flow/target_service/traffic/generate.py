@@ -110,7 +110,10 @@ def run(stable_url: str, profile_name: str, canary_url: str | None, canary_share
             requests = profile["requests"]
             batch = due + random.choices(requests, weights=[r.get("weight", 1) for r in requests], k=1)
             for request in batch:
-                instance, base_url = pick_target(stable_url, target_canary, share)
+                # scheduled batch jobs (stable_only) run against the primary deployment; the canary only gets a
+                # share of user traffic, which is why a canary can miss a rarely used path (demo 3)
+                instance, base_url = (("stable", stable_url) if request.get("stable_only")
+                                      else pick_target(stable_url, target_canary, share))
                 window[instance][send(http, base_url, request)] += 1
 
             if now - window_started >= 1.0:
