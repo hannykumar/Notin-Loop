@@ -301,8 +301,8 @@ def cmd_start(args) -> int:
         with Agent(traffic=not args.no_traffic) as agent, \
                 Live(get_renderable=agent.frame, refresh_per_second=2):
             if args.ui:
-                from factory import dashboard
-                dashboard.serve_in_thread(agent, args.ui)
+                from factory import dashboard_api
+                dashboard_api.serve_in_thread(agent, args.ui)
             consume(agent.q, agent.intake, lambda: build_deps(args.fixer), agent.stop_event)
     except KeyboardInterrupt:
         print("stopped")

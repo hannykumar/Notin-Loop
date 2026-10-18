@@ -1,29 +1,32 @@
-"""Live dashboard API: status stream, incident cards, evidence-grounded buddy, manual rollback.
+"""The one dashboard: status stream, incident cards, evidence-grounded buddy, and the demo controls.
 
-    python -m factory.dashboard_api            # standalone on 127.0.0.1:8100, page at /
-    app.include_router(dashboard_api.router)   # or mount the /api routes on another FastAPI app
+    python -m factory.cli start --ui [PORT]           # inside the agent process (default 8099; shares its watcher)
+    python -m factory.dashboard_api [--port 8100]     # standalone: state from runs/ files, buttons still work
+    app.include_router(dashboard_api.router)          # or mount the /api routes on another FastAPI app
 
-Read-only over the agent's files (audit.jsonl, inbox/, releases.json, deploy/stable.json); the only
-action is POST /api/rollback/{tag}, which runs the same manual path as `python -m factory.stages.rollback`
-(actor "human"). The buddy only explains: it never decides a verdict and sees only the run's recorded
-evidence and diff. Patterned on SRE-agent/agent/run_summaries.py (turn run state into a plain summary)
+Reads the agent's files (audit.jsonl, inbox/, releases.json, deploy/stable.json). Human actions, all through
+the same calls as the CLI (actor "human"): POST /api/rollback/{tag}, /api/pause, /api/resume, /api/break/{name}
+(traffic profile), /api/replay/{run_id}, /api/report (+ GET /report). The buddy only explains: it never decides
+a verdict and sees only the run's recorded evidence and diff. Patterned on SRE-agent/agent/run_summaries.py (turn run state into a plain summary)
 via factory/report.py; the live view follows report.render_live's per-stage marks.
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
+import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from factory import audit, inbox, llm, policy, releases
+from factory import audit, inbox, llm, pipeline, policy, releases, report
 from factory.pipeline import STAGE_ORDER, is_paused
 from factory.watcher import Watcher
 
@@ -55,6 +58,13 @@ def set_watcher(watcher: Any) -> None:
     """Inject a watcher (tests, or the agent's own instance when mounted in the CLI server)."""
     global _watcher
     _watcher = watcher
+
+
+def _try(fn: Callable[[], Any], default: Any = None) -> Any:
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001 - every extra status field degrades to null; the stream never breaks
+        return default
 
 
 # --- reading the agent's files ------------------------------------------------
@@ -125,9 +135,11 @@ def _evidence_summary(entries: list[dict]) -> list[str]:
 
 def _card(run_id: str, entries: list[dict]) -> dict:
     gates = {name: "skipped" for name in GATES}
+    reasons: dict[str, str] = {}
     for entry in entries:
         if entry.get("stage") in gates and entry.get("status"):
             gates[entry["stage"]] = entry["status"]
+            reasons[entry["stage"]] = "; ".join(_short(r, 300) for r in entry.get("reasons") or [])
     end = next((e for e in reversed(entries) if e.get("stage") == "run_end"), None)
     status = OUTCOME_STATUS.get(end.get("outcome"), "escalated") if end else "running"
     bug = _bug(entries, run_id)
@@ -142,6 +154,7 @@ def _card(run_id: str, entries: list[dict]) -> dict:
         "ended_at": end.get("ts") if end else None,
         "release_tag": _evidence(entries, "promote").get("tag", ""),
         "gate_results": gates,
+        "gate_reasons": reasons,
         "evidence_summary": _evidence_summary(entries),
         "diff_preview": "\n".join(diff.splitlines()[:DIFF_PREVIEW_LINES]),
         "needs_attention": inbox.get(run_id) is not None,
@@ -156,18 +169,36 @@ def incidents() -> list[dict]:
 
 def server_health() -> dict:
     """Stable is healthy if its last scrape worked and no route is at or above the alert error rate."""
-    _watcher.tick()
+    # current() ticks only when the watcher is stale (Watcher._fresh). The agent's shared watcher is already
+    # ticking; forcing a tick here would double-count its breach streaks and drop the breaches it returns.
+    overall = (_watcher.current("*", "stable").get("metrics") or {})
     hist = _watcher.history.get("stable")
+    live = {"error_rate_percent": overall.get("error_rate_percent"), "p95_latency_ms": overall.get("p95_latency_ms"),
+            "alert_error_rate_percent": policy.ALERT_ERROR_RATE_PERCENT, "slo_p95_ms": policy.SLO_MAX_P95_MS}
     if not hist:
         error = (_watcher.scrape_errors.get("stable") or {}).get("error", "no scrape yet")
-        return {"healthy": False, "reason": error, "worst_error_rate_percent": None}
+        return {"healthy": False, "reason": error, "worst_error_rate_percent": None, **live}
     worst = 0.0
     for route in hist[-1][1]:
         snap = _watcher.current(route, "stable")
         if snap["samples"]:
             worst = max(worst, snap["metrics"].get("error_rate_percent", 0.0))
     healthy = worst < policy.ALERT_ERROR_RATE_PERCENT
-    return {"healthy": healthy, "reason": "" if healthy else f"5xx rate {worst}%", "worst_error_rate_percent": worst}
+    return {"healthy": healthy, "reason": "" if healthy else f"5xx rate {worst}%", "worst_error_rate_percent": worst,
+            **live}
+
+
+def _traffic_profile() -> Optional[str]:
+    from factory.stages.canary import _traffic
+    return _traffic().read_control().get("profile")
+
+
+def _chain_verified() -> Optional[bool]:
+    return audit.verify()[0]   # raises without AUDIT_HMAC_KEY -> null ("not checked")
+
+
+def _scoreboard() -> dict:
+    return report.summarize(report.load_audit(), report.load_releases())["scoreboard"]
 
 
 def status_snapshot() -> dict:
@@ -176,7 +207,7 @@ def status_snapshot() -> dict:
     attention = sum(1 for c in cards if c["needs_attention"]) + (1 if is_paused() else 0)
     rels = _releases()
     stable = _stable_state()
-    health = server_health()
+    health = _try(server_health, {"healthy": None, "reason": "health unavailable"})
     return {
         "server_healthy": health["healthy"],
         "health": health,
@@ -189,6 +220,10 @@ def status_snapshot() -> dict:
         "deployed_ref": stable.get("ref", "release-0"),
         "uptime_s": round(time.time() - stable.get("started_ts", STARTED_AT)),
         "card_status": {c["id"]: c["status"] for c in cards},
+        "releases": rels,
+        "traffic_profile": _try(_traffic_profile),
+        "chain_verified": _try(_chain_verified),
+        "scoreboard": _try(_scoreboard),
     }
 
 
@@ -273,8 +308,43 @@ async def buddy(request: BuddyRequest) -> StreamingResponse:
 async def manual_rollback(tag: str) -> dict:
     from factory.stages import rollback  # imported lazily: it pulls git and process control
 
-    verdict = await run_in_threadpool(rollback.rollback, tag, actor="human", reason="manual rollback from dashboard")
+    verdict = await run_in_threadpool(rollback.rollback, tag, actor="human", reason="manual rollback from dashboard",
+                                      audit_append=audit.append)
     return json.loads(json.dumps(asdict(verdict), default=str))
+
+
+@router.post("/break/{name}")
+def break_traffic(name: str) -> dict:
+    from factory import cli
+
+    if name not in cli.PROFILES:
+        raise HTTPException(status_code=404, detail=f"unknown profile {name}; one of {list(cli.PROFILES)}")
+    return {"ok": True, "control": cli.set_profile(name)}
+
+
+@router.post("/pause")
+def pause_line() -> dict:
+    pipeline.pause(actor="human", reason="dashboard pause")
+    return {"ok": True, "paused": True}
+
+
+@router.post("/resume")
+def resume_line() -> dict:
+    pipeline.resume(actor="human")
+    return {"ok": True, "paused": False}
+
+
+@router.post("/replay/{run_id}")
+def replay_run(run_id: str) -> dict:
+    from factory import replay
+
+    result = replay.replay(run_id)
+    return {"ok": True, "reproduced": result["reproduced"], "lines": replay.format_result(result)}
+
+
+@router.post("/report")
+def write_report() -> dict:
+    return {"ok": True, "path": str(report.render_html()), "url": "/report"}
 
 
 app = FastAPI(title="sre-dark-factory-dashboard")
@@ -286,10 +356,31 @@ def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "dashboard.html")
 
 
-def main() -> None:
+@app.get("/report", include_in_schema=False)
+def get_report() -> FileResponse:
+    path = audit.runs_dir() / "report.html"
+    if not path.exists():
+        report.render_html(out_path=path)
+    return FileResponse(path)
+
+
+def serve_in_thread(agent: Any, port: int = 8099) -> threading.Thread:
+    """uvicorn in a daemon thread of the agent process (cli start --ui): health comes from its shared watcher."""
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8100, log_level="warning")
+    set_watcher(agent.watcher)
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    thread = threading.Thread(target=server.run, name="dashboard", daemon=True)
+    thread.start()
+    return thread
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    import uvicorn
+
+    parser = argparse.ArgumentParser(prog="python -m factory.dashboard_api", description="Standalone dashboard.")
+    parser.add_argument("--port", type=int, default=8100)
+    uvicorn.run(app, host="127.0.0.1", port=parser.parse_args(argv).port, log_level="warning")
 
 
 if __name__ == "__main__":

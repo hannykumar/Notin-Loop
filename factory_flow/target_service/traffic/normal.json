@@ -14,6 +14,6 @@
     {"method": "GET", "path": "/stock/coffee", "weight": 1}
   ],
   "scheduled": [
-    {"method": "GET", "path": "/reports/daily", "every_s": 20}
+    {"method": "GET", "path": "/reports/daily", "every_s": 20, "stable_only": true}
   ]
 }

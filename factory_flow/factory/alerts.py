@@ -35,8 +35,14 @@ def normalize(breach: dict) -> dict:
     return alert
 
 
+# The watcher reports a breach on every tick while a route stays breached; a gap this long means it recovered.
+RECOVERY_GAP_S = 3 * policy.SCRAPE_INTERVAL_S
+
+
 class AlertIntake:
-    """One active run per fingerprint; repeats while it runs are dropped.
+    """One run per breach episode: repeats are dropped while its run is active, and after the run ends until
+    the route has recovered (no breach for RECOVERY_GAP_S). Without the second rule a route that stays broken
+    (an escalated bug) opens a new run on every tick.
 
     Patterned on SRE-agent/runtime/api.py ingest_grafana_alert: an active run for the alert => "duplicate_alert", no new run.
     """
@@ -44,12 +50,20 @@ class AlertIntake:
     def __init__(self, on_alert: Callable[[dict], Any]):
         self.on_alert = on_alert
         self.active: set[str] = set()   # ponytail: no lock; handle() is called from the single watcher thread
+        self.handled: set[str] = set()  # run ended, breach episode not over yet
+        self.last_seen: dict[str, float] = {}
 
     def handle(self, breach: dict) -> Optional[dict]:
         alert = normalize(breach)
         fingerprint = alert["fingerprint"]
+        seen = parse_ts(breach.get("detected_at") or breach["started_at"]).timestamp()
+        previous, self.last_seen[fingerprint] = self.last_seen.get(fingerprint), seen
         if fingerprint in self.active:
             return None
+        if fingerprint in self.handled:
+            if previous is not None and seen - previous <= RECOVERY_GAP_S:
+                return None                      # same episode the finished run already handled
+            self.handled.discard(fingerprint)    # it recovered in between: this is a new episode
         self.active.add(fingerprint)
         try:
             self.on_alert(alert)
@@ -60,3 +74,4 @@ class AlertIntake:
 
     def done(self, fingerprint: str) -> None:
         self.active.discard(fingerprint)
+        self.handled.add(fingerprint)

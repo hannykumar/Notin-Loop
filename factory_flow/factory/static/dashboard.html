@@ -3,236 +3,707 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SRE dark factory</title>
+<title>SRE Dark Factory</title>
 <style>
-  :root { --bg: #0d1117; --panel: #161b22; --text: #c9d1d9; --dim: #8b949e; --border: #21262d;
-          --green: #3fb950; --amber: #d29922; --red: #f85149; --blue: #58a6ff; }
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117; --panel: #161b22; --panel-2: #1c2330; --sunken: #0a0e14;
+    --border: #2a313c; --border-2: #3a4350;
+    --text: #e6edf3; --dim: #9aa5b1; --faint: #5d6774;
+    --green: #3fb950; --green-bg: rgba(63, 185, 80, .16);
+    --red: #f85149;   --red-bg: rgba(248, 81, 73, .16);
+    --amber: #e3b341; --amber-bg: rgba(227, 179, 65, .16);
+    --blue: #58a6ff;  --blue-bg: rgba(88, 166, 255, .18);
+    --purple: #bc8cff; --purple-bg: rgba(188, 140, 255, .16);
+    --radius: 12px; --gap: 16px;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --fs-xs: 14px; --fs-s: 16px; --fs-m: 18px; --fs-l: 22px; --fs-xl: 30px; --fs-xxl: 40px;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 24px;
-           padding: 12px 20px; background: var(--bg); border-bottom: 1px solid var(--border); }
-  header .title { font-weight: bold; }
-  header .item { color: var(--dim); }
-  header .item b { color: var(--text); font-weight: normal; }
-  .ok { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); }
-  #buddy { margin-left: auto; position: relative; width: 14px; height: 14px; border-radius: 50%;
-           background: var(--green); animation: pulse 2.4s ease-in-out infinite; }
-  #buddy.active { background: var(--amber); }
-  #buddy.attention { background: var(--red); }
-  #badge { position: absolute; top: -9px; right: -12px; min-width: 16px; padding: 0 4px; border-radius: 8px;
-           background: var(--red); color: var(--bg); font-size: 10px; line-height: 16px; text-align: center;
-           display: none; }
-  #buddy.attention #badge { display: block; }
-  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.85); } }
-  main { max-width: 980px; margin: 0 auto; padding: 20px; }
-  #empty { color: var(--dim); text-align: center; padding: 40px; }
-  .card { border: 1px solid var(--border); border-radius: 6px; background: var(--panel); margin-bottom: 14px;
-          overflow: hidden; }
-  .card .head { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px 6px; }
-  .card .sig { font-weight: bold; word-break: break-all; }
-  .status { margin-left: auto; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); white-space: nowrap; }
-  .status.promoted { color: var(--green); border-color: var(--green); }
-  .status.escalated { color: var(--red); border-color: var(--red); }
-  .status.rolled_back { color: var(--amber); border-color: var(--amber); }
-  .status.running { color: var(--blue); border-color: var(--blue); }
-  .meta { color: var(--dim); padding: 0 14px; }
-  .gates { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 14px; }
-  .gate { color: var(--dim); }
-  .gate .m-pass { color: var(--green); } .gate .m-fail { color: var(--red); }
-  .gate .m-unsure { color: var(--amber); } .gate .m-skipped { color: var(--border); }
-  .evidence { margin: 0; padding: 4px 14px 8px 30px; color: var(--dim); }
-  pre { margin: 0 14px 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
-        border-radius: 4px; overflow-x: auto; white-space: pre; }
-  .add { color: var(--green); } .del { color: var(--red); }
-  .actions { display: flex; gap: 8px; padding: 0 14px 12px; }
-  button { font: inherit; color: var(--text); background: #21262d; border: 1px solid #30363d; border-radius: 4px;
-           padding: 3px 10px; cursor: pointer; }
-  button:hover { border-color: var(--dim); }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 17px/1.45 var(--sans); padding: 0 24px 32px;
+         min-width: 0; }
+  .mono { font-family: var(--mono); }
+  .num { font-variant-numeric: tabular-nums; }
+  .lbl { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+  .ok { color: var(--green); } .bad { color: var(--red); } .warn { color: var(--amber); } .dim { color: var(--dim); }
+  .info { color: var(--blue); }
+  button, .btn { font: inherit; font-size: var(--fs-s); font-weight: 600; color: var(--text); background: var(--panel-2);
+                 border: 1px solid var(--border-2); border-radius: 8px; padding: 8px 14px; cursor: pointer;
+                 text-decoration: none; transition: border-color .15s, background-color .15s, transform .1s; }
+  button:hover, .btn:hover { border-color: var(--blue); }
+  button:active { transform: translateY(1px); }
   button:disabled { opacity: .5; cursor: default; }
-  button.danger { color: var(--red); }
-  .trail { margin: 0 14px 12px; border-top: 1px solid var(--border); }
-  .trail div { padding: 3px 0; border-bottom: 1px solid var(--border); }
-  .panel { border-top: 1px solid var(--border); background: #0f141b; max-height: 0; overflow: hidden;
-           transition: max-height .3s ease; }
-  .panel.open { max-height: 640px; overflow-y: auto; }
-  .panel .msgs { padding: 10px 14px; white-space: pre-wrap; }
-  .panel .q { color: var(--blue); margin-top: 8px; }
-  .panel form { display: flex; gap: 8px; padding: 0 14px 12px; }
-  .panel input { flex: 1; font: inherit; color: var(--text); background: var(--bg); border: 1px solid #30363d;
-                 border-radius: 4px; padding: 4px 8px; }
+  button:focus-visible, .btn:focus-visible, .card:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: stretch; gap: 12px;
+            padding: 14px 0; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; flex-direction: column; justify-content: center; min-width: 150px; }
+  .brand .name { font-size: var(--fs-l); font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+  .brand .sub { font-size: var(--fs-xs); color: var(--dim); white-space: nowrap; }
+  .tile { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 14px;
+          display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .tile .val { font-size: var(--fs-m); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .hint { font-size: var(--fs-xs); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.health { flex: 0 0 360px; border-width: 2px; transition: border-color .3s, background-color .3s; }
+  .tile.health.ok { border-color: var(--green); background: linear-gradient(var(--green-bg), var(--panel)); }
+  .tile.health.bad { border-color: var(--red); background: linear-gradient(var(--red-bg), var(--panel)); }
+  .health .row { display: flex; align-items: baseline; gap: 16px; }
+  .health .state { font-size: 28px; font-weight: 800; line-height: 1.1; min-width: 160px; white-space: nowrap; color: var(--text); }
+  .health.ok .state { color: var(--green); } .health.bad .state { color: var(--red); }
+  .health .metric { display: flex; flex-direction: column; min-width: 76px; white-space: nowrap; }
+  .health .metric b { font-size: var(--fs-l); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .health .metric small { font-size: var(--fs-xs); color: var(--dim); }
+  .tile.flex { flex: 1 1 140px; }
+  .line-ctl { align-items: center; gap: 6px; flex: 0 0 auto; padding: 8px 10px; text-align: center; }
+  .line-ctl .val { min-width: 118px; }
+  .line-ctl.paused { border-color: var(--amber); background: var(--amber-bg); }
+  #kill { font-size: var(--fs-m); font-weight: 800; padding: 12px 18px; min-width: 168px; color: #fff;
+          background: #b62324; border-color: var(--red); }
+  #kill:hover { background: #d1242f; }
+  #kill.resume { background: #1f7a34; border-color: var(--green); }
+  #kill.resume:hover { background: #238636; }
+
+  /* ---------- demo controls ---------- */
+  .demos { display: flex; align-items: stretch; gap: 12px; margin: 16px 0; }
+  .demos .head { display: flex; flex-direction: column; justify-content: center; min-width: 140px; }
+  .demos .head small { color: var(--dim); font-size: var(--fs-xs); }
+  .demo { flex: 1 1 0; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px;
+          border-radius: var(--radius); background: var(--panel); border: 1px solid var(--border); position: relative; }
+  .demo .k { font-size: var(--fs-xs); color: var(--dim); text-transform: uppercase; letter-spacing: .07em; }
+  .demo .t { font-size: var(--fs-m); font-weight: 800; }
+  .demo .e { font-size: var(--fs-s); font-weight: 500; color: var(--dim); }
+  .demo.brk { border-left: 4px solid var(--red); }
+  .demo.normal { border-left: 4px solid var(--green); flex: .8 1 0; }
+  .demo.active { border-color: var(--blue); background: var(--blue-bg); }
+  .demo.active::after { content: "● live traffic"; position: absolute; top: 9px; right: 12px; font-size: var(--fs-xs);
+                        color: var(--blue); font-weight: 700; }
+  .demos .btn { display: flex; align-items: center; justify-content: center; white-space: nowrap; border-radius: var(--radius); }
+
+  /* ---------- hero: the gate pipeline ---------- */
+  .hero { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px 20px;
+          transition: border-color .3s; }
+  body.paused .hero { border-color: var(--amber); }
+  .hero-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; min-height: 64px; }
+  .hero-head .titles { flex: 1; min-width: 0; }
+  .hero-head h1 { margin: 2px 0 0; font-size: var(--fs-l); font-weight: 800; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; }
+  .hero-head .sub { color: var(--dim); font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-head .right { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; }
+  #paused-banner { display: none; margin: -4px 0 14px; padding: 8px 14px; border-radius: 8px; background: var(--amber-bg);
+                   color: var(--amber); font-weight: 700; border: 1px solid var(--amber); }
+  body.paused #paused-banner { display: block; }
+
+  .pipe-wrap { position: relative; }
+  .pipe { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)) auto; gap: 12px; }
+  .stage { position: relative; height: 128px; border-radius: 12px; padding: 10px 4px; text-align: center;
+           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+           background: var(--sunken); border: 2px dashed var(--border-2); color: var(--faint);
+           transition: background-color .45s, border-color .45s, color .45s, box-shadow .45s; }
+  .stage:not(:nth-child(10)):not(.rb)::after { content: ""; position: absolute; right: -14px; top: 50%; width: 14px; height: 3px;
+           background: var(--border-2); transition: background-color .45s; }
+  .stage .n { font-size: var(--fs-xs); font-weight: 700; opacity: .8; }
+  .stage .i { font-size: 34px; line-height: 1.1; font-weight: 800; }
+  .stage .name { font-size: clamp(14px, 1.15vw, 20px); font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+  .stage .st { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .stage.pass { background: var(--green-bg); border: 2px solid var(--green); color: var(--green); }
+  .stage.pass::after { background: var(--green) !important; }
+  .stage.fail { background: var(--red-bg); border: 2px solid var(--red); color: var(--red); box-shadow: 0 0 0 4px rgba(248,81,73,.15); }
+  .stage.unsure { background: var(--amber-bg); border: 2px solid var(--amber); color: var(--amber); box-shadow: 0 0 0 4px rgba(227,179,65,.15); }
+  .stage.running { background: var(--blue-bg); border: 2px solid var(--blue); color: var(--blue); animation: pulse 1.4s ease-in-out infinite; }
+  .stage.rb { width: 104px; margin-left: 18px; border-style: solid; }
+  .stage.rb::before { content: "↶"; position: absolute; left: -26px; top: 50%; transform: translateY(-50%); font-size: 26px;
+                      color: var(--purple); }
+  .stage.rb.pass { background: var(--purple-bg); border-color: var(--purple); color: var(--purple); }
+  .stage.changed { animation: pop .6s ease-out; }
+  .stage.running.changed { animation: pop .6s ease-out, pulse 1.4s ease-in-out .6s infinite; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(88,166,255,.55); } 50% { box-shadow: 0 0 0 10px rgba(88,166,255,0); } }
+  @keyframes pop { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .stage, .stage.changed, .stage.running { animation: none !important; transition: none; } }
+
+  .callout { position: relative; margin-top: 16px; min-height: 58px; padding: 12px 16px; border-radius: 10px;
+             background: var(--panel-2); border: 1px solid var(--border-2); font-size: var(--fs-m);
+             transition: border-color .3s, background-color .3s; }
+  .callout .caret { position: absolute; top: -9px; width: 16px; height: 16px; background: inherit; border-left: inherit;
+                    border-top: inherit; transform: translateX(-50%) rotate(45deg); transition: left .4s ease; }
+  .callout.fail { border-color: var(--red); background: #2a1618; }
+  .callout.unsure { border-color: var(--amber); background: #2a2214; }
+  .callout.running { border-color: var(--blue); background: #142236; }
+  .callout.pass { border-color: var(--green); background: #12261a; }
+  .callout b { margin-right: 6px; }
+
+  /* ---------- lower grid ---------- */
+  .grid { display: grid; grid-template-columns: 360px minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--gap); margin-top: var(--gap); align-items: start; }
+  @media (max-width: 1360px) { .grid { grid-template-columns: 340px minmax(0, 1fr) minmax(0, 1fr); }
+                               .tile.health { flex-basis: 330px; } .health .state { min-width: 130px; } }
+  @media (max-width: 1180px) { .grid { grid-template-columns: 340px minmax(0, 1fr); } .buddy { grid-column: 1 / -1; }
+                               .topbar, .demos { flex-wrap: wrap; } }
+  .col { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
+           min-width: 0; }
+  .panel > header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .panel > header h2 { margin: 0; font-size: var(--fs-m); font-weight: 800; }
+  .panel > header .spacer { flex: 1; }
+  .scroll { overflow-y: auto; }
+  .empty { color: var(--dim); padding: 18px 4px; text-align: center; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: var(--fs-xs);
+           font-weight: 800; letter-spacing: .03em; text-transform: uppercase; border: 1px solid currentColor; white-space: nowrap; }
+  .b-promoted { color: var(--green); background: var(--green-bg); }
+  .b-escalated { color: var(--amber); background: var(--amber-bg); }
+  .b-rolled_back { color: var(--purple); background: var(--purple-bg); }
+  .b-running { color: var(--blue); background: var(--blue-bg); }
+  .b-plain { color: var(--dim); }
+  .pill-inbox { color: var(--amber); background: var(--amber-bg); }
+
+  /* incidents */
+  #incidents { max-height: 470px; display: flex; flex-direction: column; gap: 10px; }
+  .card { text-align: left; width: 100%; display: block; padding: 12px 14px; border-radius: 10px; background: var(--panel-2);
+          border: 1px solid var(--border); font-weight: 400; transition: border-color .2s, background-color .2s; }
+  .card.sel { border-color: var(--blue); background: #1a2a42; box-shadow: inset 4px 0 0 var(--blue); }
+  .card .top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .card .sig { font-family: var(--mono); font-size: var(--fs-s); font-weight: 600; white-space: nowrap; overflow: hidden;
+               text-overflow: ellipsis; }
+  .card .meta { font-size: var(--fs-xs); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dots { display: flex; gap: 4px; margin-top: 8px; }
+  .dot { width: 22px; height: 22px; border-radius: 5px; font-size: 13px; line-height: 22px; text-align: center; font-weight: 800;
+         background: var(--sunken); color: var(--faint); border: 1px solid var(--border); }
+  .dot.pass { background: var(--green-bg); color: var(--green); border-color: transparent; }
+  .dot.fail { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+  .dot.unsure { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .dot.running { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+  .dot.rbd { margin-left: 6px; }
+  .dot.rbd.pass { background: var(--purple-bg); color: var(--purple); }
+
+  /* releases + scoreboard */
+  .rel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 10px 0;
+         border-top: 1px solid var(--border); }
+  .rel:first-child { border-top: 0; }
+  .rel .tag { font-family: var(--mono); font-weight: 700; font-size: var(--fs-s); }
+  .rel .live { color: var(--green); font-size: var(--fs-xs); font-weight: 800; margin-left: 6px; }
+  .rel .meta { font-size: var(--fs-xs); color: var(--dim); grid-column: 1 / -1; }
+  .rel button { font-size: var(--fs-xs); padding: 6px 10px; }
+  .rel button.armed { background: #b62324; border-color: var(--red); color: #fff; }
+  .score { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .score div { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
+  .score b { display: block; font-size: var(--fs-xl); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .score span { font-size: var(--fs-xs); color: var(--dim); }
+  .score .zero { grid-column: 1 / -1; border: 2px solid var(--green); background: var(--green-bg); }
+  .score .zero.nonzero { border-color: var(--red); background: var(--red-bg); }
+
+  /* incident detail */
+  #detail h3 { margin: 18px 0 8px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+               color: var(--dim); }
+  #detail h3:first-of-type { margin-top: 4px; }
+  .evidence { margin: 0; padding-left: 20px; font-size: var(--fs-s); }
+  .evidence li { margin: 3px 0; overflow-wrap: anywhere; }
+  pre { margin: 0; padding: 10px 12px; background: var(--sunken); border: 1px solid var(--border); border-radius: 8px;
+        overflow: auto; font: 15px/1.45 var(--mono); max-height: 260px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .add { color: var(--green); } .del { color: var(--red); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .replay { margin-top: 12px; border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border-2); background: var(--panel-2); }
+  .replay .head { font-size: var(--fs-m); font-weight: 800; margin-bottom: 6px; }
+  .replay.ok { border-color: var(--green); } .replay.bad { border-color: var(--red); }
+  .replay pre { max-height: 220px; font-size: 14px; color: var(--text); white-space: pre-wrap; }
+  .trail { margin-top: 12px; max-height: 260px; overflow-y: auto; font: 14px/1.5 var(--mono); border: 1px solid var(--border);
+           border-radius: 8px; }
+  .trail div { padding: 4px 10px; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+  .trail div:first-child { border-top: 0; }
+
+  /* buddy */
+  .buddy { display: flex; flex-direction: column; }
+  .never { color: var(--purple); background: var(--purple-bg); }
+  .buddy .note { color: var(--dim); font-size: var(--fs-xs); margin: -4px 0 12px; }
+  .msgs { flex: 1; min-height: 220px; max-height: 420px; overflow-y: auto; background: var(--sunken); border: 1px solid var(--border);
+          border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; font-size: var(--fs-s); }
+  .msgs .q { color: var(--blue); font-weight: 700; margin-top: 12px; }
+  .msgs .q:first-child { margin-top: 0; }
+  .msgs .a { margin-top: 4px; }
+  .msgs .a.typing::after { content: "▍"; color: var(--purple); animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .ask { display: flex; gap: 10px; margin-top: 12px; }
+  .ask input { flex: 1; min-width: 0; font: inherit; font-size: var(--fs-s); color: var(--text); background: var(--sunken);
+               border: 1px solid var(--border-2); border-radius: 8px; padding: 8px 12px; }
+  .ask input:focus { outline: 2px solid var(--blue); border-color: transparent; }
+
+  #toast { position: fixed; right: 24px; bottom: 24px; z-index: 10; max-width: 520px; padding: 12px 16px; border-radius: 10px;
+           background: var(--panel-2); border: 1px solid var(--border-2); box-shadow: 0 8px 24px rgba(0,0,0,.4);
+           opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.bad { border-color: var(--red); }
+  body.offline .topbar::after { content: "⚠ dashboard offline: reconnecting…"; position: absolute; right: 0; bottom: -30px;
+                                color: var(--amber); font-weight: 700; font-size: var(--fs-xs); }
 </style>
 </head>
 <body>
-<header>
-  <span class="title">SRE dark factory</span>
-  <span class="item">server <b id="server">…</b></span>
-  <span class="item">uptime <b id="uptime">…</b></span>
-  <span class="item">release <b id="release">…</b></span>
-  <span class="item">stage <b id="stage">idle</b></span>
-  <span id="buddy" title="buddy"><span id="badge"></span></span>
+<header class="topbar">
+  <div class="brand"><span class="name">SRE Dark Factory</span><span class="sub">human on the loop</span></div>
+  <div class="tile health" id="t-health" title="">
+    <div class="lbl">Service health · stable</div>
+    <div class="row">
+      <span class="state" id="h-state">…</span>
+      <span class="metric"><b id="h-err">–</b><small>5xx rate</small></span>
+      <span class="metric"><b id="h-p95">–</b><small>p95</small></span>
+    </div>
+  </div>
+  <div class="tile flex"><div class="lbl">Deployed</div><div class="val mono" id="t-release">…</div><div class="hint" id="t-latest">&nbsp;</div></div>
+  <div class="tile flex"><div class="lbl">Traffic</div><div class="val" id="t-traffic">…</div><div class="hint">generator profile</div></div>
+  <div class="tile flex"><div class="lbl">Audit chain</div><div class="val" id="t-chain">…</div><div class="hint">hash + HMAC</div></div>
+  <div class="tile line-ctl" id="t-line">
+    <div><div class="lbl">Line</div><div class="val" id="t-line-state">…</div></div>
+    <button id="kill" title="Kill switch: stop the line">■ Pause line</button>
+  </div>
 </header>
-<main>
-  <div id="feed"></div>
-  <div id="empty">No incidents yet.</div>
-</main>
+
+<section class="demos" aria-label="Demo controls">
+  <div class="head"><span class="lbl">Demo controls</span><small>break the live service, then watch</small></div>
+  <button class="demo brk" data-break="cart"><span class="k">Demo 1</span><span class="t">Break cart</span><span class="e">✓ agent fixes &amp; ships</span></button>
+  <button class="demo brk" data-break="stock"><span class="k">Demo 2</span><span class="t">Break stock</span><span class="e">⚠ agent refuses &amp; escalates</span></button>
+  <button class="demo brk" data-break="404"><span class="k">Demo 3</span><span class="t">Break 404</span><span class="e">↶ agent ships, then undoes its own fix</span></button>
+  <button class="demo normal" data-break="normal"><span class="k">Reset</span><span class="t">Back to normal</span><span class="e">healthy traffic only</span></button>
+  <button class="btn" id="report">Open report ↗</button>
+</section>
+
+<section class="hero" aria-label="Gate pipeline">
+  <div class="hero-head">
+    <div class="titles">
+      <div class="lbl" id="p-kicker">Gate pipeline</div>
+      <h1 id="p-title">Waiting for the first alert</h1>
+      <div class="sub" id="p-sub">Only an unbroken chain of ✓ changes the server. Anything else stops the line.</div>
+    </div>
+    <div class="right"><span class="badge b-plain" id="p-badge">idle</span><button id="follow" hidden>Follow latest</button></div>
+  </div>
+  <div id="paused-banner">⏸ Line paused: no new fix ships until a human resumes it.</div>
+  <div class="pipe-wrap">
+    <div class="pipe" id="pipe"></div>
+    <div class="callout" id="callout"><span class="caret" id="caret" hidden></span><span id="callout-text">Break something with a demo button: the line lights up stage by stage.</span></div>
+  </div>
+</section>
+
+<div class="grid">
+  <div class="col">
+    <section class="panel">
+      <header><h2>Incidents</h2><button class="badge pill-inbox" id="inbox" hidden title="Show the first escalated incident"></button><span class="spacer"></span><span class="dim num" id="inc-count"></span></header>
+      <div id="incidents" class="scroll"><div class="empty">No incidents yet.</div></div>
+    </section>
+    <section class="panel">
+      <header><h2>Releases</h2><span class="spacer"></span><span class="dim">agent's own, newest first</span></header>
+      <div id="releases"><div class="empty">No releases yet.</div></div>
+    </section>
+    <section class="panel">
+      <header><h2>Scoreboard</h2></header>
+      <div class="score" id="score">
+        <div><b id="s-kept">–</b><span>shipped &amp; kept</span></div>
+        <div><b id="s-esc">–</b><span>escalated</span></div>
+        <div><b id="s-rb">–</b><span>rolled back</span></div>
+        <div><b id="s-runs">–</b><span>runs</span></div>
+        <div class="zero" id="s-zero-box"><b id="s-bad">–</b><span>bad changes left on the server</span></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="detail-panel">
+    <header><h2>Selected incident</h2><span class="spacer"></span><span class="badge b-plain" id="d-badge" hidden></span></header>
+    <div id="detail"><div class="empty">Select an incident to see its evidence, diff and replay.</div></div>
+  </section>
+
+  <section class="panel buddy">
+    <header><h2>Buddy</h2><span class="badge never">explains, never decides</span></header>
+    <div class="note">Answers only from this incident's recorded evidence and diff. Verdicts come from deterministic gates; the buddy cannot change them.</div>
+    <div id="buddy-msgs" class="msgs"><span class="dim">Select an incident, then ask for a summary.</span></div>
+    <form class="ask" id="ask">
+      <button type="button" id="summary" disabled>Summarise</button>
+      <input id="question" placeholder="Ask about this incident…" autocomplete="off" disabled>
+      <button type="submit" id="ask-btn" disabled>Ask</button>
+    </form>
+  </section>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
 <script>
 "use strict";
-const MARK = { pass: "✓", fail: "✗", unsure: "⚠", skipped: "·" };
-const feed = document.getElementById("feed");
-const cards = new Map();          // incident id -> card element
-let knownStatus = {};
+const $ = (id) => document.getElementById(id);
+const LABEL = { triage: "Triage", investigate: "Investigate", qualify: "Qualify", reproduce: "Reproduce", fix: "Fix",
+                inspect_diff: "Inspect diff", oracle: "Oracle", canary: "Canary", promote: "Promote", watch: "Watch",
+                rollback: "Rollback" };
+const MARK = { pass: "✓", fail: "✗", unsure: "⚠", running: "●", none: "·" };
+const WORD = { pass: "passed", fail: "failed", unsure: "unsure", running: "running", none: "not run" };
+const BADGE = { promoted: "✓ shipped", escalated: "⚠ escalated", rolled_back: "↶ rolled back", running: "● running" };
+const PROFILE_OF = { break_cart: "cart", break_stock: "stock", break_404: "404", normal: "normal" };
+
+let status = null;           // last /api/status snapshot
+let cards = [];              // /api/incidents, newest first
+let selected = null;         // incident id picked by the human; null = follow the newest
+let shownCardKey = "";       // JSON of the card the pipeline/detail currently shows
+const buddyLogs = new Map(); // incident id -> messages element (kept across selections)
+const replays = new Map();   // incident id -> replay result element
+const rbState = new Map();   // release tag -> "running" | result text
+let lastReleasesKey = "", toastTimer = 0;
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
-    if (k === "class") node.className = v; else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
-    else node.setAttribute(k, v);
+    if (v === undefined || v === null || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children) node.append(c instanceof Node ? c : document.createTextNode(String(c ?? "")));
+  for (const c of children.flat()) node.append(c instanceof Node ? c : document.createTextNode(String(c ?? "")));
   return node;
 }
-
-function fmtTime(ts) { return ts ? ts.replace("T", " ").replace("Z", " UTC") : "…"; }
-function fmtUptime(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+function setText(id, text, cls) { const n = $(id); n.textContent = text; if (cls !== undefined) n.className = cls; }
+function hhmm(ts) { return ts ? ts.slice(11, 19) : "…"; }
+function toast(text, bad = false) {
+  const t = $("toast"); t.textContent = text; t.className = "show" + (bad ? " bad" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = bad ? "bad" : ""; }, 4500);
+}
+async function post(url) {
+  const res = await fetch(url, { method: "POST" });
+  const text = await res.text();
+  let body = {}; try { body = JSON.parse(text); } catch (e) { body = { detail: text }; }
+  if (!res.ok || body.ok === false) throw new Error(body.detail || body.error || res.status);
+  return body;
 }
 
-function diffBlock(text) {
-  const pre = el("pre");
-  for (const line of text.split("\n")) {
-    const cls = line.startsWith("+") && !line.startsWith("+++") ? "add"
-              : line.startsWith("-") && !line.startsWith("---") ? "del" : "";
-    pre.append(el("span", cls ? { class: cls } : {}, line + "\n"));
+/* ---------- pipeline ---------- */
+function stagesOf(card) {
+  const order = Object.keys(card.gate_results).filter((n) => n !== "rollback");
+  const st = order.map((n) => ({ name: n, s: card.gate_results[n] === "skipped" ? "none" : card.gate_results[n],
+                                 reason: (card.gate_reasons || {})[n] || "" }));
+  if (card.status === "running") {
+    let last = -1; st.forEach((x, i) => { if (x.s !== "none") last = i; });
+    if (last + 1 < st.length && (last < 0 || st[last].s === "pass")) {
+      st[last + 1].s = "running"; st[last + 1].reason = "in progress";
+    }
   }
-  return pre;
+  const rb = card.gate_results.rollback;
+  return { st, rb: rb && rb !== "skipped" ? { name: "rollback", s: rb, reason: (card.gate_reasons || {}).rollback || "" } : null };
+}
+function kind(card) { return card.gate_results.rollback === "pass" ? "rolled_back" : card.status; }
+
+function buildPipe() {
+  const pipe = $("pipe");
+  const names = Object.keys(LABEL);
+  names.forEach((n, i) => pipe.append(el("div", { class: "stage" + (n === "rollback" ? " rb" : ""), id: "st-" + n,
+    hidden: n === "rollback" },
+    el("span", { class: "n" }, n === "rollback" ? "undo" : String(i + 1)), el("span", { class: "i" }, MARK.none),
+    el("span", { class: "name" }, LABEL[n]), el("span", { class: "st" }, WORD.none))));
+  $("st-rollback").title = "Rollback: only used when the agent undoes its own release";
+}
+function paintStage(x, animate) {
+  const node = $("st-" + x.name);
+  const cls = "stage" + (x.name === "rollback" ? " rb" : "") + (x.s === "none" ? "" : " " + x.s);
+  const changed = node.dataset.s !== x.s;
+  node.dataset.s = x.s;
+  node.className = cls + (changed && animate ? " changed" : "");
+  node.querySelector(".i").textContent = MARK[x.s] || "?";
+  node.querySelector(".st").textContent = WORD[x.s] || x.s;
+  node.title = LABEL[x.name] + ": " + (x.reason || WORD[x.s]);
+  if (changed && animate) setTimeout(() => node.classList.remove("changed"), 650);
+}
+function headline(card) {
+  const tag = card.release_tag || "the release";
+  if (card.status === "running") return null;
+  if (kind(card) === "rolled_back") return `↶ Shipped ${tag}, then rolled back its own fix`;
+  if (card.status === "promoted") return `✓ Fixed and shipped ${tag}: no human approval`;
+  return "⚠ Refused: escalated to a human with the evidence";
+}
+function renderPipeline(card, animate) {
+  if (!card) return;
+  const { st, rb } = stagesOf(card);
+  st.forEach((x) => paintStage(x, animate));
+  $("st-rollback").hidden = !rb;
+  if (rb) paintStage(rb, animate);
+  const running = st.find((x) => x.s === "running");
+  $("p-kicker").textContent = card.id === (cards[0] || {}).id ? "Gate pipeline · latest incident" : "Gate pipeline · selected incident";
+  $("p-title").textContent = headline(card) || `Working: ${running ? LABEL[running.name] : card.current_stage || "…"}`;
+  $("p-sub").textContent = `${card.signature} · ${card.id}`;
+  setText("p-badge", BADGE[kind(card)] || card.status, "badge b-" + kind(card));
+  $("follow").hidden = selected === null;
+
+  const stop = st.find((x) => ["fail", "unsure", "running"].includes(x.s));
+  const allPass = !stop && st.some((x) => x.s === "pass");
+  const target = stop || (allPass ? [...st].reverse().find((x) => x.s === "pass") : null);
+  const callout = $("callout"), caret = $("caret"), text = $("callout-text");
+  text.replaceChildren();
+  if (target) {
+    const state = stop ? stop.s : "pass";
+    callout.className = "callout " + state;
+    const msg = stop ? (stop.reason || WORD[stop.s]) : (card.status === "promoted" ? "every gate passed; the release is live and kept" : "every gate so far passed");
+    text.append(el("b", {}, `${MARK[state]} ${LABEL[target.name]}`), msg);
+    if (rb) text.append(el("div", { class: "dim" }, `↶ Rollback ${WORD[rb.s]}` + (rb.reason ? `: ${rb.reason}` : "")));
+    const node = $("st-" + target.name), wrap = node.offsetParent;
+    caret.hidden = false;
+    caret.style.left = (node.offsetLeft + node.offsetWidth / 2) + "px";
+    if (wrap !== callout.offsetParent) caret.hidden = true;
+  } else {
+    callout.className = "callout"; caret.hidden = true;
+    text.append("Alert received; the line is starting.");
+  }
 }
 
-function renderCard(inc) {
-  const gates = el("div", { class: "gates" });
-  for (const [stage, result] of Object.entries(inc.gate_results)) {
-    gates.append(el("span", { class: "gate" }, el("span", { class: "m-" + result }, MARK[result] || "?"), " " + stage));
-  }
-  const evidence = el("ul", { class: "evidence" }, ...inc.evidence_summary.map(line => el("li", {}, line)));
-  const trail = el("div", { class: "trail", hidden: "" });
-  const panel = el("div", { class: "panel" });
-  const actions = el("div", { class: "actions" },
-    el("button", { onclick: () => toggleAudit(inc.id, trail) }, "View audit"),
-    ...(inc.release_tag ? [el("button", { class: "danger", onclick: ev => rollback(inc.release_tag, ev.target) },
-                              `Rollback ${inc.release_tag}`)] : []),
-    el("button", { onclick: () => toggleBuddy(inc.id, panel) }, "Ask buddy"));
-  const card = el("section", { class: "card", id: "card-" + inc.id },
-    el("div", { class: "head" },
-       el("span", { class: "sig" }, inc.signature),
-       el("span", { class: "meta" }, inc.bug_id),
-       el("span", { class: "status " + inc.status }, inc.status.replace("_", " "))),
-    el("div", { class: "meta" }, `${inc.id} · started ${fmtTime(inc.started_at)}`
-       + (inc.ended_at ? ` · ended ${fmtTime(inc.ended_at)}` : ` · at ${inc.current_stage || "…"}`)),
-    gates, evidence,
-    ...(inc.diff_preview ? [diffBlock(inc.diff_preview)] : []),
-    actions, trail, panel);
-  return card;
+/* ---------- incidents ---------- */
+function current() { return cards.find((c) => c.id === selected) || cards[0] || null; }
+
+function renderIncidents() {
+  const box = $("incidents");
+  if (!cards.length) { box.replaceChildren(el("div", { class: "empty" }, "No incidents yet.")); return; }
+  const cur = current();
+  box.replaceChildren(...cards.map((c) => {
+    const { st, rb } = stagesOf(c);
+    return el("button", { class: "card" + (cur && c.id === cur.id ? " sel" : ""), onclick: () => select(c.id) },
+      el("div", { class: "top" }, el("span", { class: "badge b-" + kind(c) }, BADGE[kind(c)] || c.status),
+         c.needs_attention ? el("span", { class: "badge pill-inbox" }, "inbox") : "",
+         el("span", { class: "meta", style: "margin-left:auto" }, hhmm(c.started_at))),
+      el("div", { class: "sig", title: c.signature }, c.signature),
+      el("div", { class: "meta" }, c.id + (c.release_tag ? " · " + c.release_tag : "")),
+      el("div", { class: "dots", "aria-hidden": "true" },
+         st.map((x) => el("span", { class: "dot " + x.s, title: LABEL[x.name] + " " + WORD[x.s] }, MARK[x.s])),
+         rb ? el("span", { class: "dot rbd " + rb.s, title: "Rollback " + WORD[rb.s] }, "↶") : ""));
+  }));
+  const attention = cards.filter((c) => c.needs_attention).length;
+  $("inbox").hidden = !attention;
+  $("inbox").textContent = `⚠ ${attention} in inbox`;
+  $("inc-count").textContent = `${cards.length} total`;
+}
+
+function select(id) {
+  selected = cards[0] && id === cards[0].id ? null : id;
+  shownCardKey = "";
+  refreshSelected();
+}
+
+function refreshSelected() {
+  renderIncidents();
+  const card = current();
+  const key = card ? JSON.stringify(card) : "";
+  if (key === shownCardKey) return;
+  const sameCard = card && shownCardKey && JSON.parse(shownCardKey).id === card.id;
+  shownCardKey = key;
+  renderPipeline(card, sameCard);
+  renderDetail(card, sameCard);
+  renderBuddy(card);
 }
 
 async function loadIncidents() {
-  const res = await fetch("/api/incidents");
-  if (!res.ok) return;
-  const list = await res.json();
-  document.getElementById("empty").hidden = list.length > 0;
-  list.forEach((inc, i) => {
-    const old = cards.get(inc.id);
-    const fresh = renderCard(inc);
-    if (old) {                    // keep an open audit trail / buddy panel; refresh the rest
-      const keep = old.querySelectorAll(".trail, .panel");
-      fresh.querySelector(".trail").replaceWith(keep[0]);
-      fresh.querySelector(".panel").replaceWith(keep[1]);
-      old.replaceWith(fresh);
-    } else {
-      feed.insertBefore(fresh, feed.children[i] || null);
-    }
-    cards.set(inc.id, fresh);
-  });
+  try {
+    const res = await fetch("/api/incidents");
+    if (!res.ok) return;
+    cards = await res.json();
+    if (selected && !cards.some((c) => c.id === selected)) selected = null;
+    refreshSelected();
+  } catch (e) { /* the status stream reports offline */ }
 }
 
+/* ---------- detail ---------- */
+function diffBlock(text) {
+  return el("pre", {}, text.split("\n").map((line) => el("span",
+    { class: line.startsWith("+") && !line.startsWith("+++") ? "add" : line.startsWith("-") && !line.startsWith("---") ? "del" : null },
+    line + "\n")));
+}
+function renderDetail(card, keepOpen) {
+  const box = $("detail");
+  if (!card) { $("d-badge").hidden = true; return; }
+  setText("d-badge", BADGE[kind(card)] || card.status, "badge b-" + kind(card));
+  $("d-badge").hidden = false;
+  const trailOpen = keepOpen && box.querySelector(".trail");
+  const trail = trailOpen || el("div", { class: "trail", hidden: true });
+  if (!replays.has(card.id)) replays.set(card.id, el("div", { class: "replay", hidden: true }));
+  const replayBtn = el("button", { onclick: () => replay(card.id, replayBtn) }, "⟲ Replay decision");
+  box.replaceChildren(
+    el("div", { class: "sig mono", style: "font-weight:700;overflow-wrap:anywhere" }, card.signature),
+    el("div", { class: "dim" }, `${card.id}${card.bug_id ? " · " + card.bug_id : ""} · started ${hhmm(card.started_at)}`
+       + (card.ended_at ? ` · ended ${hhmm(card.ended_at)}` : " · in progress")
+       + (card.needs_attention ? " · waiting in the inbox" : "")),
+    el("h3", {}, "Evidence"),
+    card.evidence_summary.length ? el("ul", { class: "evidence" }, card.evidence_summary.map((l) => el("li", {}, l)))
+                                 : el("div", { class: "dim" }, "No gate reasons recorded yet."),
+    el("h3", {}, "Diff preview"),
+    card.diff_preview ? diffBlock(card.diff_preview) : el("div", { class: "dim" }, "No diff recorded for this run."),
+    el("div", { class: "actions" }, replayBtn,
+       el("button", { onclick: () => toggleAudit(card.id, trail) }, "Audit trail")),
+    replays.get(card.id), trail);
+}
+async function replay(id, button) {
+  const box = replays.get(id);
+  button.disabled = true;
+  box.hidden = false; box.className = "replay";
+  box.replaceChildren(el("div", { class: "head" }, "⟲ Re-running the deterministic gates…"));
+  try {
+    const r = await post("/api/replay/" + encodeURIComponent(id));
+    box.className = "replay " + (r.reproduced ? "ok" : "bad");
+    box.replaceChildren(el("div", { class: "head " + (r.reproduced ? "ok" : "bad") },
+                          r.reproduced ? "✓ Decision reproduced" : "✗ Decision NOT reproduced"),
+                        el("pre", {}, r.lines.join("\n")));
+  } catch (e) {
+    box.className = "replay bad";
+    box.replaceChildren(el("div", { class: "head bad" }, "✗ Replay failed"), el("pre", {}, String(e.message)));
+  }
+  button.disabled = false;
+}
 async function toggleAudit(id, trail) {
   if (!trail.hidden) { trail.hidden = true; return; }
   trail.replaceChildren(el("div", {}, "loading…"));
   trail.hidden = false;
   const res = await fetch(`/api/incidents/${encodeURIComponent(id)}/audit`);
   const entries = res.ok ? await res.json() : [];
-  trail.replaceChildren(...entries.map(e => el("div", {},
-    `#${e.seq} ${fmtTime(e.ts)} ${e.stage} ${e.status || e.outcome || ""} `
-    + (e.reasons || []).join("; ") + ` [${(e.entry_hash || "").slice(0, 10)}]`)));
+  trail.replaceChildren(...entries.map((e) => el("div", {},
+    `#${e.seq} ${hhmm(e.ts)} ${e.stage} ${e.status || e.outcome || ""} ` + (e.reasons || []).join("; ")
+    + ` [${(e.entry_hash || "").slice(0, 10)}]`)));
 }
 
+/* ---------- buddy ---------- */
+function renderBuddy(card) {
+  for (const id of ["summary", "question", "ask-btn"]) $(id).disabled = !card;
+  if (!card) return;
+  if (!buddyLogs.has(card.id)) {
+    buddyLogs.set(card.id, el("div", { class: "msgs", id: "buddy-msgs" },
+      el("span", { class: "dim" }, `Buddy for ${card.id}. Press Summarise, or ask a question.`)));
+  }
+  const log = buddyLogs.get(card.id);
+  if ($("buddy-msgs") !== log) $("buddy-msgs").replaceWith(log);
+}
+async function ask(question) {
+  const card = current();
+  if (!card) return;
+  const log = buddyLogs.get(card.id);
+  if (log.firstChild && log.firstChild.classList && log.firstChild.classList.contains("dim")) log.replaceChildren();
+  log.append(el("div", { class: "q" }, question ? "› " + question : "› Summarise this incident"));
+  const answer = el("div", { class: "a typing" }, "");
+  log.append(answer);
+  log.scrollTop = log.scrollHeight;
+  try {
+    const res = await fetch("/api/buddy", { method: "POST", headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ incident_id: card.id, question }) });
+    if (!res.ok || !res.body) { answer.textContent = `buddy unavailable (${res.status})`; return; }
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      answer.textContent += decoder.decode(value, { stream: true });
+      log.scrollTop = log.scrollHeight;
+    }
+  } catch (e) { answer.textContent += ` (buddy error: ${e.message})`; }
+  finally { answer.classList.remove("typing"); }
+}
+
+/* ---------- releases ---------- */
+function renderReleases(rels, deployed) {
+  const key = JSON.stringify([rels, deployed, [...rbState]]);
+  if (key === lastReleasesKey) return;
+  lastReleasesKey = key;
+  const box = $("releases");
+  if (!rels.length) { box.replaceChildren(el("div", { class: "empty" }, "No releases yet.")); return; }
+  box.replaceChildren(...rels.slice().reverse().map((r) => {
+    const rb = rbState.get(r.tag);
+    const can = ["kept", "watching"].includes(r.status) && rb !== "running";
+    const cls = r.status === "kept" ? "b-promoted" : r.status === "rolled_back" ? "b-rolled_back" : r.status === "watching" ? "b-running" : "b-escalated";
+    return el("div", { class: "rel" },
+      el("div", {}, el("span", { class: "tag" }, r.tag), r.tag === deployed ? el("span", { class: "live" }, "● LIVE") : "",
+         " ", el("span", { class: "badge " + cls }, r.status.replace("_", " "))),
+      can ? el("button", { onclick: (ev) => rollback(r.tag, ev.currentTarget) }, "↶ Roll back")
+          : el("span", { class: "dim" }, rb === "running" ? "rolling back…" : ""),
+      el("div", { class: "meta" }, `${r.run_id} · ${hhmm(r.promoted_at)}` + (rb && rb !== "running" ? ` · manual rollback: ${rb}` : "")));
+  }));
+}
 async function rollback(tag, button) {
-  if (button.dataset.armed !== "1") {         // two-step confirm without a browser dialog
-    button.dataset.armed = "1";
-    button.textContent = `Confirm rollback ${tag}?`;
-    setTimeout(() => { button.dataset.armed = ""; button.textContent = `Rollback ${tag}`; }, 4000);
+  if (button.dataset.armed !== "1") {          // two-step confirm without a browser dialog
+    button.dataset.armed = "1"; button.classList.add("armed"); button.textContent = "Confirm?";
+    setTimeout(() => { if (button.isConnected) { button.dataset.armed = ""; button.classList.remove("armed"); button.textContent = "↶ Roll back"; } }, 4000);
     return;
   }
-  button.disabled = true;
-  button.textContent = `Rolling back ${tag}…`;
-  const res = await fetch(`/api/rollback/${encodeURIComponent(tag)}`, { method: "POST" });
-  const verdict = res.ok ? await res.json() : { status: "error", reasons: [await res.text()] };
-  button.textContent = `Rollback ${verdict.status}: ${(verdict.reasons || [])[0] || ""}`;
+  rbState.set(tag, "running");
+  renderReleases(status.releases || [], status.deployed_ref);
+  toast(`Rolling back ${tag}: waiting for health to settle…`);
+  try {
+    const res = await fetch(`/api/rollback/${encodeURIComponent(tag)}`, { method: "POST" });
+    const v = res.ok ? await res.json() : { status: "error", reasons: [await res.text()] };
+    rbState.set(tag, `${v.status}${(v.reasons || [])[0] ? ": " + v.reasons[0] : ""}`);
+    toast(`Rollback ${tag}: ${v.status}`, v.status !== "pass");
+  } catch (e) { rbState.set(tag, "error: " + e.message); toast("Rollback error: " + e.message, true); }
+  if (status) renderReleases(status.releases || [], status.deployed_ref);
   loadIncidents();
 }
 
-async function ask(id, question, msgs) {
-  if (question) msgs.append(el("div", { class: "q" }, "> " + question));
-  const answer = el("div", {}, "");
-  msgs.append(answer);
-  const res = await fetch("/api/buddy", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ incident_id: id, question }),
-  });
-  if (!res.ok || !res.body) { answer.textContent = `buddy unavailable (${res.status})`; return; }
-  const reader = res.body.getReader(), decoder = new TextDecoder();
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    answer.textContent += decoder.decode(value, { stream: true });
-  }
-}
-
-function toggleBuddy(id, panel) {
-  if (panel.classList.toggle("open") && !panel.dataset.ready) {
-    panel.dataset.ready = "1";
-    const msgs = el("div", { class: "msgs" });
-    const input = el("input", { placeholder: "Ask about this incident…" });
-    const form = el("form", { onsubmit: ev => {
-      ev.preventDefault();
-      const q = input.value.trim();
-      if (q) { input.value = ""; ask(id, q, msgs); }
-    } }, input, el("button", { type: "submit" }, "Ask"));
-    panel.append(msgs, form);
-    ask(id, "", msgs);           // grounded summary first
-  }
-}
-
+/* ---------- status stream ---------- */
 function applyStatus(s) {
-  const server = document.getElementById("server");
-  server.textContent = s.server_healthy ? "healthy" : "degraded" + (s.health && s.health.reason ? ` (${s.health.reason})` : "");
-  server.className = s.server_healthy ? "ok" : "bad";
-  document.getElementById("uptime").textContent = fmtUptime(s.uptime_s);
-  document.getElementById("release").textContent =
-    s.latest_release ? `${s.deployed_ref} (latest ${s.latest_release.tag} ${s.latest_release.status})` : s.deployed_ref;
-  const stage = document.getElementById("stage");
-  stage.textContent = s.current_run ? `${s.current_run} (${s.current_run_id})` : (s.paused ? "PAUSED" : "idle");
-  stage.className = s.current_run ? "warn" : (s.paused ? "bad" : "");
-  const buddy = document.getElementById("buddy");
-  buddy.className = s.buddy_state === "idle" ? "" : s.buddy_state;
-  document.getElementById("badge").textContent = s.incident_count || "";
-  const changed = JSON.stringify(s.card_status) !== JSON.stringify(knownStatus);
-  knownStatus = s.card_status;
+  const first = status === null;
+  const changed = first || JSON.stringify(s.card_status) !== JSON.stringify(status.card_status);
+  status = s;
+  document.body.classList.remove("offline");
+
+  const h = s.health || {};
+  const err = h.error_rate_percent, p95 = h.p95_latency_ms;
+  const healthy = s.server_healthy;
+  $("t-health").className = "tile health " + (healthy === true ? "ok" : healthy === false ? "bad" : "");
+  $("t-health").title = h.reason || "";
+  setText("h-state", healthy === true ? "✓ Healthy" : healthy === false ? (h.worst_error_rate_percent == null ? "✗ Down" : "✗ Degraded") : "? No data");
+  setText("h-err", typeof err === "number" ? err.toFixed(1) + "%" : "–",
+          typeof err !== "number" ? "dim" : err >= (h.alert_error_rate_percent ?? 5) ? "bad" : "ok");
+  setText("h-p95", typeof p95 === "number" ? Math.round(p95) + " ms" : "–",
+          typeof p95 !== "number" ? "dim" : p95 >= (h.slo_p95_ms ?? 500) ? "bad" : "ok");
+
+  setText("t-release", s.deployed_ref || "–");
+  setText("t-latest", s.latest_release ? `latest ${s.latest_release.tag} · ${s.latest_release.status.replace("_", " ")}` : "no agent release yet");
+  const prof = s.traffic_profile;
+  setText("t-traffic", !prof ? "–" : prof === "normal" ? "✓ normal" : "⚡ " + prof.replace("_", " "),
+          "val " + (!prof ? "dim" : prof === "normal" ? "ok" : "bad"));
+  document.querySelectorAll("[data-break]").forEach((b) => b.classList.toggle("active", PROFILE_OF[prof] === b.dataset.break));
+  setText("t-chain", s.chain_verified == null ? "– not checked" : s.chain_verified ? "✓ verified" : "✗ BROKEN",
+          "val " + (s.chain_verified == null ? "dim" : s.chain_verified ? "ok" : "bad"));
+
+  document.body.classList.toggle("paused", !!s.paused);
+  $("t-line").className = "tile line-ctl" + (s.paused ? " paused" : "");
+  setText("t-line-state", s.paused ? "⏸ PAUSED" : "▶ RUNNING", "val " + (s.paused ? "warn" : "ok"));
+  setText("kill", s.paused ? "▶ Resume line" : "■ Pause line", s.paused ? "resume" : "");
+
+  renderReleases(s.releases || [], s.deployed_ref);
+  const sb = s.scoreboard || {};
+  const n = (v) => (typeof v === "number" ? String(v) : "–");
+  setText("s-kept", n(sb.promoted_kept)); setText("s-esc", n(sb.escalated)); setText("s-rb", n(sb.rolled_back));
+  setText("s-runs", n(sb.runs)); setText("s-bad", n(sb.bad_changes_left), sb.bad_changes_left ? "bad" : "ok");
+  $("s-zero-box").className = "zero" + (sb.bad_changes_left ? " nonzero" : "");
+
   if (changed || s.current_run) loadIncidents();
 }
 
+document.querySelectorAll("[data-break]").forEach((b) => b.addEventListener("click", async () => {
+  try {
+    await post("/api/break/" + b.dataset.break);
+    toast(b.dataset.break === "normal" ? "Traffic back to normal" : `Traffic now breaks ${b.dataset.break}: watch the line`);
+  } catch (e) { toast("Break failed: " + e.message, true); }
+}));
+$("kill").addEventListener("click", async () => {
+  const pausing = !(status && status.paused);
+  try {
+    await post(pausing ? "/api/pause" : "/api/resume");
+    if (status) applyStatus({ ...status, paused: pausing });
+    toast(pausing ? "Line paused by human" : "Line resumed");
+  } catch (e) { toast("Kill switch failed: " + e.message, true); }
+});
+$("report").addEventListener("click", async () => {
+  const win = window.open("about:blank", "_blank");
+  try { await post("/api/report"); if (win) win.location = "/report"; else window.location = "/report"; }
+  catch (e) { if (win) win.close(); toast("Report failed: " + e.message, true); }
+});
+$("follow").addEventListener("click", () => select(cards[0] && cards[0].id));
+$("inbox").addEventListener("click", () => { const c = cards.find((x) => x.needs_attention); if (c) select(c.id); });
+$("summary").addEventListener("click", () => ask(""));
+$("ask").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const q = $("question").value.trim();
+  if (q) { $("question").value = ""; ask(q); }
+});
+window.addEventListener("resize", () => { shownCardKey = ""; refreshSelected(); });
+
+buildPipe();
 const events = new EventSource("/api/status");
-events.onmessage = ev => applyStatus(JSON.parse(ev.data));
+events.onmessage = (ev) => applyStatus(JSON.parse(ev.data));
+events.onerror = () => document.body.classList.add("offline");
 loadIncidents();
 </script>
 </body>

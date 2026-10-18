@@ -28,7 +28,12 @@ def test_sustained_break_one_alert_until_done():
     other = intake.handle(dict(BREACH, route="/orders/{order_id}"))
     assert other and other["fingerprint"] != calls[0]["fingerprint"] and len(calls) == 2
     intake.done(calls[0]["fingerprint"])
-    assert intake.handle(BREACH) is not None and len(calls) == 3
+    # the run ended but the route is still breached on every tick: same episode, no new run (live bug: an
+    # escalated stock bug opened 13 runs in 30 s)
+    still = [intake.handle(dict(BREACH, detected_at=f"2026-10-18T14:01:{s:02d}Z")) for s in range(40, 60, 2)]
+    assert all(r is None for r in still) and len(calls) == 2
+    # the route recovered (no breach for > RECOVERY_GAP_S), then broke again: a new episode, a new run
+    assert intake.handle(dict(BREACH, detected_at="2026-10-18T14:03:00Z")) is not None and len(calls) == 3
 
 
 def test_failed_handoff_does_not_block_route():
