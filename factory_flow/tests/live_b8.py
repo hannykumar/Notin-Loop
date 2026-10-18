@@ -28,14 +28,14 @@ import live_b6  # noqa: E402
 from gen_sample_audit import TEST_HMAC_KEY, Chain  # noqa: E402
 from live_b5 import FAILURES, RUNS, TARGET, expect  # noqa: E402
 
-from factory import report  # noqa: E402
+from factory import audit, report  # noqa: E402
 from factory.contracts import Verdict  # noqa: E402
 from factory.stages import inspect_diff, oracle  # noqa: E402
 
 DEMOS = {
     "run-a": {"patch": "cart_fix.diff", "repro": "test_repro_cart.py", "path": "/cart/total",
               "request": ("/cart/total", {"user": "dave"})},
-    "run-c": {"patch": "orders_helper_fix.diff", "repro": "test_repro_404.py", "path": "/orders/{order_id}",
+    "run-c": {"patch": "orders_helper_fix.diff", "repro": "test_repro_orders.py", "path": "/orders/{order_id}",
               "request": ("/orders/o-9999", {})},
 }
 
@@ -91,7 +91,7 @@ def main() -> int:
     live = {"run-a": captured[:3], "run-c": captured[3:]}
 
     print("\n== 3. chain real verdicts into runs/audit.jsonl and render the report")
-    # STUB(track A): audit.append (A2) -- Chain builds the PRD 7.7 hash chain + HMAC.
+    # Chain builds the PRD 7.7 hash chain + HMAC in audit.append's format (fixed timestamps).
     chain = Chain()
     for run_id, demo in DEMOS.items():
         chain.start(run_id, f"ALERT-{run_id}", demo["path"])
@@ -108,7 +108,7 @@ def main() -> int:
 
     out = report.render_html(audit_path, RUNS / "releases.json", RUNS / "report.html", hmac_key=TEST_HMAC_KEY)
     html = Path(out).read_text()
-    ok, bad = report.verify_chain(report.load_audit(audit_path), hmac_key=TEST_HMAC_KEY)
+    ok, bad = audit.verify(audit_path, TEST_HMAC_KEY)
     summary = report.summarize(report.load_audit(audit_path), report.load_releases(RUNS / "releases.json"))
     outcomes = {run["run_id"]: run["outcome"] for run in summary["runs"]}
     print(f"  report: {out}")

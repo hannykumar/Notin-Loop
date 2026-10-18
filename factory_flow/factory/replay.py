@@ -1,7 +1,7 @@
 """Verify the audit chain and re-derive a run's decision (PRD B7).
 
 replay(run_id):
-  1. Verify the whole audit chain and every HMAC (report.verify_chain, plus a genesis / seq-continuity check).
+  1. Verify the whole audit chain and every HMAC (audit.verify: seq 1..n, prev_hash chain, entry_hash, HMAC).
      Any break stops the replay: not reproduced, and the first bad seq is reported.
   2. Reload the run's stored artifacts (bug report, diff, frozen test), recompute their hashes and compare
      them with every hash recorded in the run's audit evidence. Any mismatch or missing artifact stops the
@@ -26,7 +26,7 @@ runs/artifacts/<run_id>/
 Audit evidence keys replay relies on (PRD 7.7 entries, written through audit.append):
     investigate   evidence.bug_report_sha256 = canonical_hash(asdict(BugReport))   (== canonical_hash(json.load(bug.json)))
     reproduce     evidence.test_path         = frozen test path RELATIVE to runs/artifacts/<run_id>/
-                  evidence.test_sha256       = sha256 of the frozen test file bytes
+                  evidence.test_sha256       = canonical_hash(frozen test text)  (same as oracle's)
     fix           evidence.diff_sha256       = canonical_hash(diff)  (oracle.diff_hash)
     inspect_diff  status/checks/reasons      = the inspect_diff Verdict
                   evidence                   = Verdict.evidence (has diff_sha256) + test_sha256 + ref
@@ -47,7 +47,6 @@ Exit code 0 if the decision is reproduced, else 1.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import sys
@@ -55,39 +54,28 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
-from factory import workspace
-from factory.report import RUNS_DIR, load_audit, verify_chain
+from factory import audit, workspace
+from factory.report import load_audit
 from factory.sre_base import canonical_hash
 from factory.stages import inspect_diff, oracle
 
-DEFAULT_AUDIT = RUNS_DIR / "audit.jsonl"
-DEFAULT_ARTIFACTS = RUNS_DIR / "artifacts"
 DEFAULT_REF = "release-0"
-GENESIS = "0" * 64
 BUG_FILE = "bug.json"
 DIFF_FILE = "fix.diff"
 REPLAYED_STAGES = ("inspect_diff", "oracle")
 HASH_KEYS = ("bug_report_sha256", "test_sha256", "diff_sha256")
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def test_hash(path: Path) -> str:
+    """test_sha256 as reproduce and oracle record it."""
+    return canonical_hash(Path(path).read_text())
 
 
-def check_chain(entries: list[dict], hmac_key: Optional[str]) -> tuple[bool, Optional[int], str]:
-    """report.verify_chain plus what it leaves out: the first prev_hash is the genesis and seq runs 1..n
-    (so dropping the head or a line of the log is caught too)."""
+def check_chain(audit_path: Path, entries: list[dict], hmac_key: str) -> tuple[bool, Optional[int], str]:
     if not entries:
         return False, None, "audit log is empty or missing"
-    ok, bad = verify_chain(entries, hmac_key=hmac_key)
-    if not ok:
-        return False, bad, f"hash chain or HMAC broken at seq {bad}"
-    if entries[0].get("prev_hash") != GENESIS:
-        return False, entries[0].get("seq", 1), "first entry does not link to the genesis hash"
-    for index, entry in enumerate(entries, start=1):
-        if entry.get("seq") != index:
-            return False, entry.get("seq", index), f"seq gap: expected {index}, found {entry.get('seq')}"
-    return True, None, ""
+    ok, bad = audit.verify(audit_path, hmac_key)
+    return ok, bad, "" if ok else f"hash chain or HMAC broken at seq {bad}"
 
 
 def _last(entries: list[dict], stage: str) -> Optional[dict]:
@@ -121,7 +109,7 @@ def _load_artifacts(run_entries: list[dict], art_dir: Path) -> tuple[dict, list[
         elif test_path.is_file():
             arts["test_path"] = test_path
             arts["test_text"] = test_path.read_text()
-            arts["hashes"]["test_sha256"] = sha256_file(test_path)
+            arts["hashes"]["test_sha256"] = test_hash(test_path)
 
     for entry in run_entries:
         evidence = entry.get("evidence") or {}
@@ -174,19 +162,21 @@ def rerun_inspect(diff: str, bug: dict, frozen_test: str, ref: str):
         workspace.remove_worktree(wt)
 
 
-def replay(run_id: str, *, audit_path: Path | str = DEFAULT_AUDIT, artifacts_root: Path | str = DEFAULT_ARTIFACTS,
+def replay(run_id: str, *, audit_path: Path | str | None = None, artifacts_root: Path | str | None = None,
            ref: Optional[str] = None, hmac_key: Optional[str] = None) -> dict:
     """Re-derive a run's decision. `ref` overrides the recorded ref; `hmac_key` defaults to AUDIT_HMAC_KEY."""
     result: dict[str, Any] = {"run_id": run_id, "chain_ok": False, "first_bad_seq": None, "checks": [],
                               "reproduced": False, "reasons": []}
     key = hmac_key if hmac_key is not None else os.environ.get("AUDIT_HMAC_KEY") or None
+    audit_path = Path(audit_path or audit.audit_path())
+    artifacts_root = Path(artifacts_root or audit.runs_dir() / "artifacts")
     entries = load_audit(audit_path)
 
     # 1. Chain + HMACs over the whole log.
     if not key:
         result["reasons"].append("AUDIT_HMAC_KEY not set; cannot verify HMACs")
         return result
-    ok, bad, why = check_chain(entries, key)
+    ok, bad, why = check_chain(audit_path, entries, key)
     result["chain_ok"], result["first_bad_seq"] = ok, bad
     if not ok:
         result["reasons"].append(why)
@@ -255,14 +245,11 @@ def format_result(result: dict) -> list[str]:
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m factory.replay", description=__doc__.splitlines()[0])
     parser.add_argument("run_id")
-    parser.add_argument("--audit", default=str(DEFAULT_AUDIT))
-    parser.add_argument("--artifacts", default=str(DEFAULT_ARTIFACTS))
+    parser.add_argument("--audit")
+    parser.add_argument("--artifacts")
     parser.add_argument("--ref", default=None, help="override the recorded ref the oracle replays against")
     args = parser.parse_args(argv)
-    try:
-        result = replay(args.run_id, audit_path=args.audit, artifacts_root=args.artifacts, ref=args.ref)
-    finally:
-        workspace.cleanup()
+    result = replay(args.run_id, audit_path=args.audit, artifacts_root=args.artifacts, ref=args.ref)
     print("\n".join(format_result(result)))
     return 0 if result["reproduced"] else 1
 

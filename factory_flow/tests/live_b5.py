@@ -28,10 +28,10 @@ from factory.contracts import BugReport, RunState, Verdict  # noqa: E402
 from factory.policy import CANARY_PORT, STABLE_PORT  # noqa: E402
 from factory.sre_base import canonical_hash  # noqa: E402
 from factory.stages import canary, promote  # noqa: E402
-from factory.stub_watcher import parse_ts  # noqa: E402
+from factory.releases import parse_iso as parse_ts  # noqa: E402
 
-TARGET = workspace.TARGET_DIR
-RUNS = workspace.RUNS_DIR
+TARGET = workspace.target_dir()
+RUNS = workspace.runs_dir()
 CONTROL = RUNS / "traffic_control.json"
 FAILURES: list[str] = []
 

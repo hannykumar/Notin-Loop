@@ -34,18 +34,18 @@ from __future__ import annotations
 import json
 import os
 import time
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 from factory import releases, workspace
+from factory import watcher as _watcher
 from factory.contracts import Release, RunState, Verdict
 from factory.policy import ALERT_WINDOW_S, SCRAPE_INTERVAL_S, WATCH_WINDOW_S
 from factory.stages.canary import hash_check, judge_slo, sample_offsets
 from factory.stages.inspect_diff import DiffParseError, parse_unified_diff
-from factory.stub_watcher import default_watcher, watcher_signatures
 
 STAGE = "promote"
 WATCH_STAGE = "watch"
-CLAIMS_DIR = releases.RUNS_DIR / "claims"
 GIT_IDENTITY = ["-c", "user.name=sre-factory", "-c", "user.email=sre-factory@localhost"]
 
 
@@ -64,10 +64,14 @@ def files_touched(diff: str) -> list[str]:
     return files
 
 
+def claims_dir() -> Path:
+    return workspace.runs_dir() / "claims"
+
+
 def claim(diff_sha256: str, run_id: str) -> Optional[dict]:
     """Claim the promotion of diff_sha256. Returns None if claimed now, else the existing claim."""
-    CLAIMS_DIR.mkdir(parents=True, exist_ok=True)
-    path = CLAIMS_DIR / f"{diff_sha256}.json"
+    claims_dir().mkdir(parents=True, exist_ok=True)
+    path = claims_dir() / f"{diff_sha256}.json"
     record = {"operation": "promote", "diff_sha256": diff_sha256, "run_id": run_id,
               "claimed_at": releases.utc_iso(), "status": "in_progress"}
     try:
@@ -83,7 +87,7 @@ def claim(diff_sha256: str, run_id: str) -> Optional[dict]:
 
 
 def _set_claim(diff_sha256: str, **fields: Any) -> None:
-    path = CLAIMS_DIR / f"{diff_sha256}.json"
+    path = claims_dir() / f"{diff_sha256}.json"
     try:
         record = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
@@ -92,7 +96,6 @@ def _set_claim(diff_sha256: str, **fields: Any) -> None:
 
 
 def run(state: RunState, watcher: Any = None) -> Verdict:
-    watcher = watcher or default_watcher()
     checks: dict[str, bool] = {}
     evidence: dict[str, Any] = {}
 
@@ -113,6 +116,7 @@ def run(state: RunState, watcher: Any = None) -> Verdict:
         checks["diff_parses"] = False
         return _verdict(STAGE, "fail", [f"diff does not parse: {exc}"], checks, evidence)
 
+    watcher = watcher or _watcher.default()
     baseline = watcher.current("*", "stable")
     evidence["baseline"] = baseline
     checks["baseline_has_samples"] = baseline.get("samples", 0) > 0
@@ -190,12 +194,12 @@ def watch(release: Release, watcher: Any = None, *, bug_signature: str = "",
           window_s: float = WATCH_WINDOW_S, interval_s: float = SCRAPE_INTERVAL_S,
           judge_after_s: float = ALERT_WINDOW_S, baseline_period_s: float = WATCH_WINDOW_S,
           since_ts: Optional[float] = None, sleep: Callable[[float], None] = time.sleep) -> Verdict:
-    watcher = watcher or default_watcher()
+    watcher = watcher or _watcher.default()
     promoted_ts = releases.parse_iso(release.promoted_at)
     if since_ts is None:
         deployed = releases.stable_state()
         since_ts = float(deployed["started_ts"]) if deployed.get("ref") == release.tag else promoted_ts
-    baseline_sigs = watcher_signatures(watcher, promoted_ts - baseline_period_s, "stable", promoted_ts)
+    baseline_sigs = watcher.signatures(promoted_ts - baseline_period_s, "stable", promoted_ts)
     touched = set(release.files_touched)
     evidence: dict[str, Any] = {"tag": release.tag, "watch_window_s": window_s, "since_ts": since_ts,
                                 "baseline": release.baseline, "baseline_signatures": dict(baseline_sigs),
@@ -211,7 +215,7 @@ def watch(release: Release, watcher: Any = None, *, bug_signature: str = "",
         if delay > 0:
             sleep(delay)
         now = time.time()
-        sigs = watcher_signatures(watcher, since_ts, "stable", now)
+        sigs = watcher.signatures(since_ts, "stable", now)
         sample: dict[str, Any] = {"offset_s": offset, "observed_at": now, "signatures": dict(sigs)}
         if bug_signature and sigs.get(bug_signature):
             checks["bug_signature_absent"] = False

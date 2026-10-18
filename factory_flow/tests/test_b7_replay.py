@@ -24,7 +24,7 @@ PROMOTED, REJECTED = gen_replay_runs.PROMOTED, gen_replay_runs.REJECTED
 
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
-    target = workspace.TARGET_DIR
+    target = workspace.target_dir()
     if not (target / ".git").exists():
         subprocess.run([str(target / "scripts" / "init_repo.sh")], check=True)
     out = tmp_path_factory.mktemp("runs")
@@ -61,7 +61,7 @@ def _rechain(entries: list[dict], start: int, key: str) -> None:
     """Recompute entry_hash/prev_hash/hmac from index `start` on (a forger who rewrites the tail)."""
     for i in range(start, len(entries)):
         e = entries[i]
-        e["prev_hash"] = entries[i - 1]["entry_hash"] if i else "0" * 64
+        e["prev_hash"] = entries[i - 1]["entry_hash"] if i else ""
         e["entry_hash"] = canonical_hash({k: v for k, v in e.items() if k not in ("entry_hash", "hmac")})
         e["hmac"] = hmac.new(key.encode(), e["entry_hash"].encode(), hashlib.sha256).hexdigest()
 

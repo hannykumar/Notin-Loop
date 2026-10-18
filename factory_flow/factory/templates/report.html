@@ -43,7 +43,10 @@
 <p>
 {% if chain_ok %}
   <span class="badge ok" id="chain-badge">&#10003; chain verified</span>
-  <span class="meta">hash chain intact{% if hmac_checked %}, HMAC checked{% else %}, HMAC not checked (no AUDIT_HMAC_KEY){% endif %}</span>
+  <span class="meta">hash chain intact, HMAC checked</span>
+{% elif not hmac_checked %}
+  <span class="badge bad" id="chain-badge">&#9888; chain not verified</span>
+  <span class="meta">no AUDIT_HMAC_KEY: hashes and HMACs were not checked</span>
 {% else %}
   <span class="badge bad" id="chain-badge">&#10007; chain verification failed at seq {{ first_bad_seq }}</span>
   <span class="meta">the audit log was modified or is incomplete from this entry on</span>

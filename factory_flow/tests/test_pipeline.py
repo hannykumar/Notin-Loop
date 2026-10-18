@@ -20,7 +20,7 @@ def ok(name):
 def stub_stages(calls, **overrides):
     """All-pass stubs; overrides maps stage name -> fn(state)."""
     def make(name):
-        def fn(state):  # STUB: replaced in step T1
+        def fn(state):  # fake stage
             calls.append(name)
             return overrides[name](state) if name in overrides else ok(name)
         return fn
@@ -39,7 +39,7 @@ def test_full_stub_run_passes():
     start, end = audit.read(state.run_id)[0], audit.read(state.run_id)[-1]
     assert start["sre_agent_commit"] and len(start["policy_sha256"]) == 64 and start["alert"] == ALERT
     assert end["outcome"] == "kept"
-    assert len(state.verdicts) == 9 and state.artifacts_dir.is_dir()
+    assert len(state.verdicts) == len(pipeline.STAGE_ORDER) and state.artifacts_dir.is_dir()
     assert audit.verify() == (True, None)
     assert inbox.list_cases() == []
 

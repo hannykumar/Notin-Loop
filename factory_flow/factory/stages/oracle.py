@@ -26,7 +26,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from factory import workspace
+from factory import releases, workspace
 from factory.contracts import PytestResult, RunState, Verdict
 from factory.sre_base import canonical_hash
 
@@ -115,7 +115,7 @@ def check(diff: str, repro_test: Path, *, ref: str = "prod", artifacts_dir: Path
         reasons.append(f"repro test missing: {repro_test}")
         unsure = True
         return verdict()
-    evidence["test_sha256"] = _sha256_file(repro_test)
+    evidence["test_sha256"] = canonical_hash(repro_test.read_text())   # same as reproduce's state.test_sha256
     evidence["repro_test"] = str(repro_test.resolve())
 
     base: Path | None = None
@@ -200,7 +200,11 @@ def run(state: RunState) -> Verdict:
         return Verdict(stage=STAGE, status="unsure", reasons=["no frozen repro test in state"],
                        checks={name: False for name in CHECK_NAMES},
                        evidence={"diff_sha256": diff_hash(state.diff or "")})
-    verdict = check(state.diff, Path(state.failing_test), artifacts_dir=state.artifacts_dir)
+    try:   # record the commit tested, not the moving branch, so replay re-runs the same code
+        ref = releases.rev("prod")
+    except RuntimeError:
+        ref = "prod"
+    verdict = check(state.diff, Path(state.failing_test), ref=ref, artifacts_dir=state.artifacts_dir)
     if verdict.status == "pass":
         state.diff_sha256 = verdict.evidence["diff_sha256"]
     return verdict

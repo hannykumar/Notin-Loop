@@ -131,8 +131,8 @@ def main() -> int:
             case = Path(v.evidence.get("inbox_case", "/nonexistent"))
             expect(case.exists() and json.loads(case.read_text())["evidence"]["failed_fix"]["tag"] == "release-2",
                    "d: inbox case with the failed fix")
-            expect(rollback.PAUSED_PATH.exists(), "d: runs/PAUSED exists")
-            print(f"  PAUSED: {rollback.PAUSED_PATH.read_text() if rollback.PAUSED_PATH.exists() else None}")
+            expect((workspace.runs_dir() / "PAUSED").exists(), "d: runs/PAUSED exists")
+            print(f"  PAUSED: {(workspace.runs_dir() / "PAUSED").read_text() if (workspace.runs_dir() / "PAUSED").exists() else None}")
 
         # ---------------------------------------------------------------- e. manual rollback
         print("\n== e. manual rollback of release-1: python -m factory.stages.rollback release-1 (actor human)")

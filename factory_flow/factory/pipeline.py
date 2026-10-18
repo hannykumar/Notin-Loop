@@ -2,6 +2,16 @@
 
 Patterned on SRE-agent/runtime/job_runner.py: a run executes a fixed stage list (no replanning),
 logs an audit event per step and turns exceptions into a recorded failure instead of crashing.
+
+One deps dict serves the whole run; each stage gets only the keys its run() signature names:
+    deps = {
+        "watcher": watcher.default(),       # investigate, canary, promote, watch, rollback (default if omitted)
+        "workspace": factory.workspace,     # qualify, reproduce, fix, inspect_diff (default if omitted)
+        "fixer": <Fixer>,                   # fix (required)
+        "http_client": httpx.Client(base_url="http://127.0.0.1:8101"),   # investigate replay (optional)
+        "releases_path": releases.ledger_path(),                         # triage, investigate (optional)
+    }
+Paths come from FACTORY_RUNS_DIR / FACTORY_TARGET_SERVICE at call time.
 """
 from __future__ import annotations
 
@@ -18,7 +28,10 @@ from factory.contracts import RunState, Verdict
 from factory.sre_base import sre_agent_commit
 
 StageFn = Callable[[RunState], Verdict]
-STAGE_ORDER = ["triage", "investigate", "qualify", "reproduce", "fix", "inspect_diff", "oracle", "canary", "promote"]
+STAGE_ORDER = ["triage", "investigate", "qualify", "reproduce", "fix", "inspect_diff", "oracle", "canary", "promote",
+               "watch"]
+# stage name -> (module, function); default factory.stages.<name>.run
+_TARGETS = {"fix": ("factory.fixers", "run_fix"), "watch": ("factory.stages.promote", "watch_stage")}
 POLICY_FILE = Path(__file__).with_name("policy.py")
 
 
@@ -27,13 +40,13 @@ def _unsure(stage: str, reason: str, **checks: bool) -> Verdict:
 
 
 def resolve(name: str, deps: Optional[dict] = None) -> StageFn:
-    """Lazy stage: imports factory.stages.<name>.run (fix: factory.fixers.run_fix) at call time.
+    """Lazy stage: imports factory.stages.<name>.run (or the _TARGETS entry) at call time.
 
     Passes only the deps the target's signature names (after the state argument).
     A missing module or function yields "unsure: stage not implemented", never a pass.
     """
     deps = deps or {}
-    module_name, attr = ("factory.fixers", "run_fix") if name == "fix" else (f"factory.stages.{name}", "run")
+    module_name, attr = _TARGETS.get(name, (f"factory.stages.{name}", "run"))
 
     def stage(state: RunState) -> Verdict:
         try:

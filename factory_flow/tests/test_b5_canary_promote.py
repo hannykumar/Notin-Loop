@@ -6,7 +6,7 @@ import json
 import time
 from collections import Counter
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -16,16 +16,15 @@ from factory.contracts import BugReport, Release, RunState
 from factory.policy import ROLLBACK_LOOKBACK_S
 from factory.sre_base import canonical_hash
 from factory.stages import canary, promote
-from factory.stub_watcher import StubWatcher, signature_of
+from factory.watcher import Watcher, signature
 
-CART_FIX = (workspace.TARGET_DIR / "patches" / "cart_fix.diff").read_text()
-ORDERS_FIX = (workspace.TARGET_DIR / "patches" / "orders_helper_fix.diff").read_text()
+CART_FIX = (workspace.target_dir() / "patches" / "cart_fix.diff").read_text()
+ORDERS_FIX = (workspace.target_dir() / "patches" / "orders_helper_fix.diff").read_text()
 
 
 @pytest.fixture(autouse=True)
 def isolated(tmp_path, monkeypatch):
-    monkeypatch.setattr(releases, "LEDGER_PATH", tmp_path / "releases.json")
-    monkeypatch.setattr(promote, "CLAIMS_DIR", tmp_path / "claims")
+    monkeypatch.setenv("FACTORY_RUNS_DIR", str(tmp_path))      # ledger, claims/
 
 
 def rel(tag: str, status: str = "kept", promoted_ago_s: float = 3600, sha: str = "") -> Release:
@@ -162,29 +161,30 @@ def write_log(path: Path, now: float) -> None:
     path.write_text("".join(json.dumps(x) + "\n" for x in lines) + "not json\n")
 
 
-def test_stub_watcher_on_synthetic_log(tmp_path):
+def test_watcher_signatures_on_synthetic_log(tmp_path):
     now = time.time()
     log = tmp_path / "server.log"
     write_log(log, now)
-    w = StubWatcher(log, clock=lambda: now)
-
-    cur = w.current("*", "stable")
-    assert cur["samples"] == 10 and cur["instance"] == "stable" and cur["path"] == "*"
-    assert cur["metrics"]["error_rate_percent"] == 10.0 and cur["metrics"]["p95_latency_ms"] == 100.0
-    assert w.current("/orders/{order_id}", "stable")["metrics"] == {"error_rate_percent": 0.0, "p95_latency_ms": 9.0}
-    assert w.current("/reports/daily", "stable")["samples"] == 1
-
-    base = w.baseline("*", "stable")
-    assert base["samples"] == 20 and base["metrics"]["error_rate_percent"] == 0.0
-    assert w.baseline("*", "stable", until=now - 30)["samples"] == 0      # no evidence => caller: unsure
-
-    assert w.current("*", "canary")["samples"] == 1
-    assert StubWatcher(tmp_path / "missing.log").current("*")["samples"] == 0
+    w = Watcher(targets={}, log_path=log)
 
     assert w.signatures(now - 60, "stable") == Counter({"OrderNotFound@app/orders.py:get_order": 1})
     assert w.signatures(now - 60, "canary") == Counter()
     assert w.signatures(now - 60, "stable", until_ts=now - 1) == Counter()
-    assert signature_of({"exception_type": "KeyError", "traceback": ""}) == "KeyError@?"
+    assert signature({"exception_type": "KeyError", "traceback": "", "status": 500, "route": "/x"}) == "HTTP500@/x"
+
+
+def test_watcher_star_path_sums_all_routes():
+    def metrics(n_ok: int, n_err: int) -> str:
+        return ("# TYPE http_requests_total counter\n"
+                f'http_requests_total{{instance="stable",method="GET",route="/a",status="200"}} {n_ok}\n'
+                f'http_requests_total{{instance="stable",method="GET",route="/b",status="500"}} {n_err}\n')
+    pages = iter([metrics(0, 0), metrics(18, 2)])
+    w = Watcher(log_path=Path("/nonexistent"), http_get=lambda url: next(pages))
+    t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    w.tick(t0)
+    w.tick(t0 + timedelta(seconds=2))
+    star = w.current("*", "stable")
+    assert star["samples"] == 20 and star["metrics"]["error_rate_percent"] == 10.0
 
 
 # ---------------------------------------------------------------- SLO judgement

@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 
 from factory import report
+from factory import audit as audit_mod
 
 FIXTURES = Path(__file__).parent / "fixtures"
 AUDIT = FIXTURES / "sample_audit.jsonl"
@@ -20,9 +21,8 @@ def sample_summary():
 
 
 def test_fixture_chain_verifies_with_hmac():
-    entries = report.load_audit(AUDIT)
-    assert report.verify_chain(entries, TEST_KEY) == (True, None)
-    assert report.verify_chain(entries, "wrong-key") == (False, 1)
+    assert audit_mod.verify(AUDIT, TEST_KEY) == (True, None)
+    assert audit_mod.verify(AUDIT, "wrong-key") == (False, 1)
 
 
 def test_summarize_outcomes_and_scoreboard():
@@ -77,7 +77,7 @@ def test_tampering_flips_badge_at_right_seq(tmp_path):
     entry["status"] = "pass"
     lines[13] = json.dumps(entry, sort_keys=True)
     audit.write_text("\n".join(lines) + "\n")
-    assert report.verify_chain(report.load_audit(audit), TEST_KEY) == (False, 14)
+    assert audit_mod.verify(audit, TEST_KEY) == (False, 14)
     html = report.render_html(audit, RELEASES, tmp_path / "report.html", hmac_key=TEST_KEY, now=NOW).read_text()
     assert "chain verification failed at seq 14" in html and "badge bad" in html
 
@@ -87,7 +87,7 @@ def test_cli_prints_path(tmp_path, capsys, monkeypatch):
     out = tmp_path / "r.html"
     assert report.main(["--audit", str(AUDIT), "--releases", str(RELEASES), "--out", str(out)]) == 0
     assert capsys.readouterr().out.strip() == str(out)
-    assert "chain verified" in out.read_text()
+    assert "chain not verified" in out.read_text()            # no key: never claims a verified chain
 
 
 def test_render_live_marks():

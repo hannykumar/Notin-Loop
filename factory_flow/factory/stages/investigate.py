@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -13,36 +12,13 @@ from typing import Any, Callable, Optional
 from factory import policy
 from factory.contracts import RELEASES_FILE_KEY, BugReport, RunState, Verdict
 from factory.sre_base import alert_evidence, canonical_hash, evaluate_evidence_gate, tool_evidence
-from factory.watcher import Watcher, iso, parse_ts, runs_dir
+from factory import watcher as _watcher
+from factory.watcher import Watcher, app_frames, iso, parse_ts, runs_dir, signature  # noqa: F401
 
-FRAME = re.compile(r'^\s*File "([^"]+)", line \d+, in (\S+)')   # same idiom as stages/qualify.py
 CONFIRM_WAIT_S = 1.0   # how long to wait for the server to log a replayed request
 
 # source_type per tool; graph metadata follows SRE-agent/agent/evidence_graph.py _graph_source_metadata
 TOOL_SOURCE = {"server_log": "logs", "metrics_scrape": "metrics", "live_replay": "replay", "release_ledger": "releases"}
-
-
-def app_frames(traceback: str) -> list[tuple[str, str]]:
-    """(app/... file, function) for frames under APP_DIR, deepest first."""
-    out = []
-    for line in (traceback or "").splitlines():
-        m = FRAME.match(line)
-        if not m:
-            continue
-        path = m.group(1)
-        if path.startswith(policy.APP_DIR):
-            out.append((path, m.group(2)))
-        elif f"/{policy.APP_DIR}" in path:
-            out.append((path[path.rfind(f"/{policy.APP_DIR}") + 1:], m.group(2)))
-    return out[::-1]
-
-
-def signature(entry: dict) -> str:
-    frames = app_frames(entry.get("traceback", ""))
-    if entry.get("exception_type") and frames:
-        file, func = frames[0]
-        return f"{entry['exception_type']}@{file}:{func}"
-    return f"HTTP{entry.get('status')}@{entry.get('route') or entry.get('path')}"
 
 
 def _safe(method: str, path: str) -> bool:
@@ -130,10 +106,7 @@ def run(state: RunState, *, watcher=None, http_client=None, base_url=None, repla
         return Verdict("investigate", "unsure", ["alert has no route or start time"], {"alert_well_formed": False}, {})
     since = parse_ts(started) - timedelta(seconds=policy.ALERT_WINDOW_S)
     until = parse_ts(breach["detected_at"]) if breach.get("detected_at") else now
-    if watcher is None:
-        watcher = Watcher()
-        watcher.remove_target("stable")          # a fresh watcher has no scrape history; only tail the log
-        watcher.tick(now)
+    watcher = watcher or _watcher.default()
 
     # 1-2. Group 5xx lines by signature.
     errors = [e for e in watcher.log_lines(since, until, instance="stable", route=route) if e.get("status", 0) >= 500]
@@ -239,7 +212,9 @@ def run(state: RunState, *, watcher=None, http_client=None, base_url=None, repla
     out = Path(state.artifacts_dir) / "investigation.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(content, indent=2, default=str))
+    (out.parent / "bug.json").write_text(json.dumps(asdict(bug), indent=2, sort_keys=True))   # read by replay
     evidence = {"investigation_path": str(out), "investigation_sha256": canonical_hash(json.loads(out.read_text())),
+                "bug_report_sha256": canonical_hash(asdict(bug)),
                 "gate": gate, "signature_counts": dict(counts), "replay_attempts": attempts,
                 "bug_report": asdict(bug), "window": window}
     return Verdict("investigate", status, reasons or [f"{sig}: share {share}, replay {failures}/{policy.REPLAY_ATTEMPTS}"],

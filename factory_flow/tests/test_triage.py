@@ -56,8 +56,21 @@ def test_pass_cases(tmp_path):
     assert v.status == "pass" and v.evidence["releases"] == 0
 
 
-def test_unknown_prod_head_passes_on_own_release_check(tmp_path):
+def test_unknown_prod_head_is_unsure(tmp_path):
     def broken():
         raise RuntimeError("no git")
     _, v = run(tmp_path, [], head=broken)
-    assert v.status == "pass" and "prod_head_error" in v.evidence
+    assert v.status == "unsure" and "prod_head_error" in v.evidence
+
+
+def test_fresh_release_0_tag_is_a_known_release_not_a_human_one(tmp_path, monkeypatch):
+    from track_a_support import git, make_mini_repo
+    repo = make_mini_repo(tmp_path)                 # prod == release-0, committed just now, not in the ledger
+    monkeypatch.setenv("FACTORY_TARGET_SERVICE", str(repo))
+    state = RunState(run_id="r3", alert={}, artifacts_dir=tmp_path)
+    v = triage.run(state, releases_path=tmp_path / "none.json")
+    assert v.status == "pass" and v.evidence["prod_release_tags"] == ["release-0"]
+    git(repo, "checkout", "-q", "prod")
+    git(repo, "-c", "user.email=h@h", "-c", "user.name=h", "commit", "-q", "--allow-empty", "-m", "hotfix")
+    v = triage.run(state, releases_path=tmp_path / "none.json")
+    assert v.status == "unsure" and v.reasons == ["human release, not reverted"]

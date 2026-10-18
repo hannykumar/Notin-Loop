@@ -30,7 +30,7 @@ ORDERS_TRACEBACK = (
     "AttributeError: 'NoneType' object has no attribute 'to_dict'\n"
 )
 CART_TEST = (TARGET / "fallback_tests" / "test_repro_cart.py").read_text()
-ORDERS_TEST = (TARGET / "fallback_tests" / "test_repro_404.py").read_text()
+ORDERS_TEST = (TARGET / "fallback_tests" / "test_repro_orders.py").read_text()
 
 
 def fixture(name: str) -> str:

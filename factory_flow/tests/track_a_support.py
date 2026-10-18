@@ -1,7 +1,7 @@
-"""Shared Track A test support: a git repo of the mini_service fixture and a stub workspace.
+"""Shared Track A test support: a git repo of the mini_service fixture and a fake workspace.
 
-# STUB(track B): StubWorkspace stands in for factory/workspace.py (B2) until it lands.
-It follows the frozen Workspace / PytestResult shapes in factory/contracts.py.
+StubWorkspace is a test double for factory/workspace.py with the frozen Workspace / PytestResult shapes
+(contracts.py); it tracks its worktrees so tests can assert none are left behind.
 """
 from __future__ import annotations
 
@@ -75,6 +75,10 @@ class StubWorkspace:
                 exc_type = message.split(":", 1)[0].strip() or child.get("type", "")
                 result["failures"].append({"nodeid": nodeid, "type": exc_type, "message": message[:500]})
         return result
+
+    def remove_worktree(self, path: Path) -> None:
+        subprocess.run(["git", "worktree", "remove", "--force", str(path)], cwd=self.repo, capture_output=True)
+        self._trees.remove(path)
 
     def cleanup(self) -> None:
         for path in self._trees:

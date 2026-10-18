@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ast
-import os
 import re
 from pathlib import Path
 
@@ -70,18 +69,21 @@ def _validate(workspace, bug: BugReport, name: str, text: str) -> tuple[str, lis
     """Run the test REPRO_RUNS times on fresh prod; return (rejection reason or "", run summaries)."""
     allowed = {bug.exception_type, "AssertionError"}
     tree = workspace.fresh_worktree("prod")
-    (tree / "tests").mkdir(exist_ok=True)
-    (tree / "tests" / name).write_text(text)
-    runs = []
-    for i in range(policy.REPRO_RUNS):
-        result = workspace.run_pytest(tree, f"tests/{name}")
-        runs.append(_summary(result))
-        if result["errors"] or result["passed"] or result["failed"] < 1:
-            return (f"run {i + 1} not a valid red: passed={result['passed']} failed={result['failed']} "
-                    f"errors={result['errors']} {runs[-1]['failure_types']}"), runs
-        if bad := [t for t in runs[-1]["failure_types"] if t not in allowed]:
-            return f"run {i + 1} failed for the wrong reason: {bad}", runs
-    return "", runs
+    try:
+        (tree / "tests").mkdir(exist_ok=True)
+        (tree / "tests" / name).write_text(text)
+        runs = []
+        for i in range(policy.REPRO_RUNS):
+            result = workspace.run_pytest(tree, f"tests/{name}")
+            runs.append(_summary(result))
+            if result["errors"] or result["passed"] or result["failed"] < 1:
+                return (f"run {i + 1} not a valid red: passed={result['passed']} failed={result['failed']} "
+                        f"errors={result['errors']} {runs[-1]['failure_types']}"), runs
+            if bad := [t for t in runs[-1]["failure_types"] if t not in allowed]:
+                return f"run {i + 1} failed for the wrong reason: {bad}", runs
+        return "", runs
+    finally:
+        workspace.remove_worktree(tree)
 
 
 def _prompt(bug: BugReport, sources: str, feedback: str) -> str:
@@ -96,14 +98,6 @@ def _prompt(bug: BugReport, sources: str, feedback: str) -> str:
     return user
 
 
-def _workspace_module():
-    try:  # STUB(track B): factory/workspace.py (B2) may not be ready; used as a module exposing the Workspace API
-        from factory import workspace as ws_module
-    except ImportError:
-        return None
-    return ws_module if hasattr(ws_module, "fresh_worktree") and hasattr(ws_module, "run_pytest") else None
-
-
 def run(state: RunState, *, workspace=None, fallback_dir=None, llm_complete=None) -> Verdict:
     evidence: dict = {"attempts": 0, "fallback_used": False, "rejections": []}
     checks = {"bug_report_present": False, "test_written": False, "lint_ok": False, "red_3_of_3": False}
@@ -116,44 +110,42 @@ def run(state: RunState, *, workspace=None, fallback_dir=None, llm_complete=None
     if bug is None:
         return verdict("unsure", "no bug report")
     checks["bug_report_present"] = True
-    workspace = workspace or _workspace_module()
     if workspace is None:
-        return verdict("unsure", "workspace unavailable")
+        from factory import workspace
     complete = llm_complete or llm.complete
     name = f"test_repro_{re.sub(r'[^a-z0-9]', '_', bug.id.lower())}.py"
-    target = Path(os.environ.get("FACTORY_TARGET_SERVICE", sre_base.FACTORY_FLOW_DIR / "target_service"))
-    fallback = Path(fallback_dir or target / "fallback_tests") / f"test_repro_{Path(bug.files[0]).stem}.py" \
+    from factory.workspace import target_dir
+    fallback = Path(fallback_dir or target_dir() / "fallback_tests") / f"test_repro_{Path(bug.files[0]).stem}.py" \
         if bug.files else None
 
+    tree = workspace.fresh_worktree("prod")
     try:
-        tree = workspace.fresh_worktree("prod")
         sources = "\n\n".join(f"### {f}\n{(tree / f).read_text()}" for f in bug.files if (tree / f).is_file())
-        text, reason, runs = "", "", []
-        for attempt in range(1, policy.REPRO_ATTEMPTS + 1):
-            try:
-                text = llm.strip_fences(complete(REPRO_SYSTEM, _prompt(bug, sources, reason)))
-                evidence["attempts"] = attempt
-            except llm.LLMUnavailable as exc:
-                evidence["llm_error"] = str(exc)
-                if not (fallback and fallback.is_file()):
-                    return verdict("unsure", f"LLM unavailable and no fallback test at {fallback}")
-                text, evidence["fallback_used"], evidence["fallback_path"] = fallback.read_text(), True, str(fallback)
-            checks["test_written"] = True
-            reason = lint(text)
-            if not reason:
-                checks["lint_ok"] = True
-                reason, runs = _validate(workspace, bug, name, text)
-                evidence["runs"] = runs
-            if not reason:
-                break
-            evidence["rejections"].append(reason)
-            if evidence["fallback_used"]:
-                return verdict("unsure", f"fallback test rejected: {reason}")
-        else:
-            return verdict("unsure", f"no valid reproduction after {policy.REPRO_ATTEMPTS} attempts: {reason}")
     finally:
-        if hasattr(workspace, "cleanup"):
-            workspace.cleanup()
+        workspace.remove_worktree(tree)   # never workspace.cleanup(): it would stop the live stable server
+    text, reason, runs = "", "", []
+    for attempt in range(1, policy.REPRO_ATTEMPTS + 1):
+        try:
+            text = llm.strip_fences(complete(REPRO_SYSTEM, _prompt(bug, sources, reason)))
+            evidence["attempts"] = attempt
+        except llm.LLMUnavailable as exc:
+            evidence["llm_error"] = str(exc)
+            if not (fallback and fallback.is_file()):
+                return verdict("unsure", f"LLM unavailable and no fallback test at {fallback}")
+            text, evidence["fallback_used"], evidence["fallback_path"] = fallback.read_text(), True, str(fallback)
+        checks["test_written"] = True
+        reason = lint(text)
+        if not reason:
+            checks["lint_ok"] = True
+            reason, runs = _validate(workspace, bug, name, text)
+            evidence["runs"] = runs
+        if not reason:
+            break
+        evidence["rejections"].append(reason)
+        if evidence["fallback_used"]:
+            return verdict("unsure", f"fallback test rejected: {reason}")
+    else:
+        return verdict("unsure", f"no valid reproduction after {policy.REPRO_ATTEMPTS} attempts: {reason}")
 
     checks["red_3_of_3"] = True
     state.artifacts_dir.mkdir(parents=True, exist_ok=True)

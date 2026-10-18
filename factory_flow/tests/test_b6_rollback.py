@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from factory import releases, stub_inbox, workspace
+from factory import releases, workspace
 from factory.contracts import BugReport, Release, RunState
 from factory.stages import rollback as rb
 
-REAL_TARGET = workspace.TARGET_DIR
+REAL_TARGET = workspace.target_dir()
 CART_FIX = (REAL_TARGET / "patches" / "cart_fix.diff").read_text()
 ORDERS_FIX = (REAL_TARGET / "patches" / "orders_helper_fix.diff").read_text()
 # On top of cart_fix, changes the line cart_fix changed: reverting cart_fix underneath it conflicts.
@@ -47,10 +47,8 @@ def env(tmp_path, monkeypatch):
     git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "release-0", cwd=target)
     git("branch", "prod", cwd=target)
     git("tag", "release-0", cwd=target)
-    monkeypatch.setattr(workspace, "TARGET_DIR", target)
-    monkeypatch.setattr(releases, "LEDGER_PATH", tmp_path / "releases.json")
-    monkeypatch.setattr(rb, "PAUSED_PATH", tmp_path / "PAUSED")
-    monkeypatch.setattr(stub_inbox, "INBOX_DIR", tmp_path / "inbox")
+    monkeypatch.setenv("FACTORY_TARGET_SERVICE", str(target))
+    monkeypatch.setenv("FACTORY_RUNS_DIR", str(tmp_path))      # ledger, inbox/, PAUSED
     deployed: list[str] = []
 
     def fake_deploy(ref: str) -> dict:
@@ -100,8 +98,8 @@ class FakeWatcher:
     def signatures(self, since_ts, instance="stable", until_ts=None):
         return self.sigs(since_ts, until_ts if until_ts is not None else time.time())
 
-    def entries(self, since_ts, until_ts, instance=None):
-        return iter(self._entries)
+    def log_lines(self, since, until=None, instance=None, route=None):
+        return list(self._entries)
 
 
 def show_at(ref: str, path: str) -> str:
