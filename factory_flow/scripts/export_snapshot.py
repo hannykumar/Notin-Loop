@@ -71,7 +71,7 @@ def export(out: Path) -> dict:
         shutil.rmtree(out)
     out.mkdir(parents=True)
 
-    for name in ("audit.jsonl", "releases.json", "deploy/stable.json"):
+    for name in ("audit.jsonl", "releases.json", "deploy/stable.json", "PAUSED"):   # PAUSED: line state at the end
         if (src / name).is_file():
             (out / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src / name, out / name)

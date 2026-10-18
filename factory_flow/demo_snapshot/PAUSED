@@ -1,0 +1,7 @@
+{
+  "reason": "release-2 rolled back to release-1; health restored; bug reopened for a human",
+  "release": "release-2",
+  "run_id": "run_3564ff0a",
+  "actor": "agent",
+  "ts": "2026-10-18T16:04:34Z"
+}
