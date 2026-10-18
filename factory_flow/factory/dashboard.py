@@ -69,7 +69,7 @@ def create_app(agent: Any = None) -> FastAPI:
 
     @app.get("/")
     def page() -> FileResponse:
-        return FileResponse(STATIC / "dashboard.html")
+        return FileResponse(STATIC / "control.html")
 
     @app.get("/api/state")
     def api_state() -> dict:

@@ -30,7 +30,7 @@ scripts/start.sh [--fixer llm|scripted]   # stable :8101 + traffic + agent with 
 ```
 
 Browser dashboard: `scripts/start.sh --ui` (or `--ui PORT`) serves it from inside the agent process, then open
-http://127.0.0.1:8099 (pipeline stages, demo break buttons, pause/resume, releases + rollback, inbox, replay).
+http://127.0.0.1:8099 — demo control panel (pipeline stages, demo break buttons, pause/resume, releases + rollback, inbox, replay).
 Without the agent: `../.venv/bin/python -m factory.dashboard [--port 8099]` (state from runs/, no live health).
 
 No network? `LLM_OFFLINE=1 scripts/start.sh` (or `--fixer scripted`): demo 1 uses the fallback test and
