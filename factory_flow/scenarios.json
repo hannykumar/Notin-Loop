@@ -1,0 +1,36 @@
+{
+  "_comment": "Expected outcomes of the three demos (PRD 8.3), read only by `python -m factory.cli run-all` for its scoreboard. The pipeline never reads this file.",
+  "scenarios": [
+    {
+      "id": "demo1",
+      "name": "Fixed on its own (BUG-CART)",
+      "break": "cart",
+      "alert_path": "/cart/total",
+      "fixer": "LLMFixer, ScriptedFixer(cart_fix.diff) as fallback",
+      "expected": {"outcome": "kept", "release": "release-1", "release_status": "kept"}
+    },
+    {
+      "id": "demo2",
+      "name": "Refused and escalated (BUG-STOCK)",
+      "break": "stock",
+      "alert_path": "/stock/{sku}/available",
+      "fixer": "never called",
+      "expected": {"outcome": "escalated", "stage": "investigate"}
+    },
+    {
+      "id": "demo3",
+      "name": "Undoes its own fix (BUG-404)",
+      "break": "404",
+      "alert_path": "/orders/{order_id}",
+      "fixer": "ScriptedFixer(orders_helper_fix.diff)",
+      "expected": {"outcome": "rolled_back", "release": "release-2", "release_status": "rolled_back"}
+    }
+  ],
+  "final_state": {
+    "prod_release": "release-1",
+    "stable_ref": "release-1",
+    "stable_healthy": true,
+    "line_paused": true,
+    "bad_changes_left": 0
+  }
+}
