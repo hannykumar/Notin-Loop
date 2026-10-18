@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SRE Dark Factory</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #11151c; --panel: #191e27; --line: #303744; --muted: #a4afbd; --text: #eef2f8;
+    --green: #2ea043; --red: #da3633; --amber: #d29922; --blue: #388bfd; --grey: #3a4250; --purple: #a371f7;
+    font: 18px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text); background: var(--bg);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px 24px; background: var(--bg); }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); border-radius: 6px;
+           padding: .5rem 1rem; background: #242b37; color: var(--text); }
+  button:hover { border-color: var(--blue); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  a { color: var(--blue); }
+  h1 { font-size: 1.5rem; margin: 0; }
+  h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .6rem; }
+
+  .top { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem; padding-bottom: 14px;
+         border-bottom: 1px solid var(--line); }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .35rem .9rem; }
+  .kpi .l { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .kpi .v { font-size: 1.35rem; font-weight: 700; }
+  .ok { color: #56d364; } .bad { color: #ff7b72; } .warn { color: #e3b341; } .dim { color: var(--muted); }
+  .spacer { flex: 1; }
+  #pausebtn { font-size: 1.3rem; font-weight: 800; padding: .7rem 1.6rem; }
+  #pausebtn.running { background: var(--red); border-color: var(--red); }
+  #pausebtn.paused { background: var(--green); border-color: var(--green); }
+
+  .demo { display: flex; flex-wrap: wrap; gap: .6rem; margin: 14px 0; }
+  .demo button { font-weight: 600; }
+  .demo .brk { border-color: var(--red); }
+  #msg { color: var(--muted); align-self: center; }
+
+  .runhead { font-size: 1.1rem; margin: 6px 0 10px; }
+  .outcome { font-weight: 700; padding: .1rem .5rem; border-radius: 4px; background: var(--grey); }
+  .o-kept { background: #1a7f37; } .o-promoted { background: #1f6feb; } .o-escalated { background: #9a6700; }
+  .o-rolled_back { background: #8250df; } .o-rollback_failed { background: var(--red); }
+
+  .line { display: flex; gap: 8px; align-items: stretch; }
+  .stage { flex: 1; min-width: 0; border-radius: 8px; padding: .6rem .4rem; text-align: center;
+           background: var(--grey); color: #c9d1d9; border: 2px solid transparent; position: relative; }
+  .stage .n { font-weight: 700; font-size: .95rem; overflow-wrap: anywhere; }
+  .stage .m { font-size: 1.6rem; line-height: 1.2; }
+  .stage.pass { background: var(--green); color: #fff; }
+  .stage.fail { background: var(--red); color: #fff; }
+  .stage.unsure { background: var(--amber); color: #1b1300; }
+  .stage.running { background: var(--blue); color: #fff; animation: pulse 1s ease-in-out infinite; }
+  .stage.rb { border-color: var(--purple); }
+  @keyframes pulse { 50% { opacity: .45; } }
+  .arrow { align-self: center; color: var(--muted); }
+  #reason { margin-top: 10px; min-height: 2.6em; background: var(--panel); border: 1px solid var(--line);
+            border-radius: 8px; padding: .5rem .8rem; font-size: .95rem; }
+
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr 1.3fr; gap: 14px; margin-top: 16px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem;
+           overflow: auto; max-height: 46vh; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: .3rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  tr.sel td { background: #233044; }
+  tr.click { cursor: pointer; }
+  td button { padding: .15rem .55rem; font-size: .8rem; }
+  .sev-critical { color: #ff7b72; font-weight: 700; } .sev-high { color: #e3b341; font-weight: 700; }
+  pre#replay { white-space: pre-wrap; font: .82rem ui-monospace, Menlo, monospace; margin: .6rem 0 0;
+               background: #0d1117; border-radius: 6px; padding: .5rem; display: none; }
+  .score { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>SRE Dark Factory</h1>
+  <div class="kpi"><div class="l">error rate</div><div class="v" id="err">n/a</div></div>
+  <div class="kpi"><div class="l">p95</div><div class="v" id="p95">n/a</div></div>
+  <div class="kpi"><div class="l">traffic</div><div class="v" id="profile">n/a</div></div>
+  <div class="kpi"><div class="l">line</div><div class="v" id="linestate">-</div></div>
+  <div class="kpi"><div class="l">audit chain</div><div class="v" id="chain">-</div></div>
+  <div class="spacer"></div>
+  <button id="pausebtn">PAUSE</button>
+</div>
+
+<div class="demo">
+  <button class="brk" data-break="cart">Break cart (demo 1)</button>
+  <button class="brk" data-break="stock">Break stock (demo 2)</button>
+  <button class="brk" data-break="404">Break 404 (demo 3)</button>
+  <button data-break="normal">Back to normal</button>
+  <button id="reportbtn">Open report</button>
+  <span id="msg"></span>
+</div>
+
+<div class="runhead" id="runhead">No runs yet.</div>
+<div class="line" id="line"></div>
+<div id="reason" class="dim">Hover a stage for its reason.</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Runs <span class="score" id="score"></span></h2>
+    <table><thead><tr><th>run</th><th>outcome</th><th>time</th><th></th></tr></thead><tbody id="runs"></tbody></table>
+    <pre id="replay"></pre>
+  </div>
+  <div class="panel">
+    <h2>Releases</h2>
+    <table><thead><tr><th>tag</th><th>run</th><th>status</th><th></th></tr></thead><tbody id="releases"></tbody></table>
+  </div>
+  <div class="panel">
+    <h2>Escalation inbox</h2>
+    <table><thead><tr><th>run</th><th>severity</th><th>stage</th><th>reason</th></tr></thead><tbody id="inbox"></tbody></table>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const MARK = {pass: "✓", fail: "✗", unsure: "⚠", running: "…", none: "·"};
+let selected = null;   // run_id clicked by the user; null = follow the latest run
+let last = null;
+
+async function post(url) {
+  const r = await fetch(url, {method: "POST"});
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok || body.ok === false) throw new Error(body.error || body.detail || r.status);
+  return body;
+}
+function say(text) { $("msg").textContent = text; }
+
+function stageStates(run, stages) {
+  const by = {};
+  for (const s of run.stages) by[s.stage] = s;   // last entry per stage wins
+  const ended = run.timeline.some((t) => t.stage === "run_end");
+  const out = stages.filter((n) => n !== "rollback" || by.rollback).map((n) => ({
+    name: n, cls: by[n] ? by[n].status : "none",
+    reason: by[n] ? (by[n].reasons.join("; ") || by[n].status) : "not reached",
+  }));
+  if (!ended && run.outcome === "in_progress") {
+    const next = out.find((s) => s.cls === "none");
+    if (next) { next.cls = "running"; next.reason = "running"; }
+  }
+  return out;
+}
+
+function renderLine(s) {
+  const runs = s.summary.runs || [];
+  const run = runs.find((r) => r.run_id === selected) || runs[runs.length - 1];
+  if (!run) { $("runhead").textContent = "No runs yet."; $("line").innerHTML = ""; return; }
+  const path = (run.alert && run.alert.path) || (run.alert && run.alert.labels && run.alert.labels.path) || "";
+  $("runhead").innerHTML = `Run <b>${esc(run.run_id)}</b> ${esc(path)} &rarr; <span class="outcome o-${esc(run.outcome)}">${esc(run.outcome)}</span>`
+    + (selected ? ` <button id="follow">follow latest</button>` : "");
+  if (selected) $("follow").onclick = () => { selected = null; render(last); };
+  $("line").innerHTML = stageStates(run, s.stages).map((st, i) =>
+    (i ? '<span class="arrow">&rsaquo;</span>' : "") +
+    `<div class="stage ${st.cls === "none" ? "" : esc(st.cls)} ${st.name === "rollback" ? "rb" : ""}" title="${esc(st.reason)}" data-reason="${esc(st.name + ": " + st.reason)}">
+       <div class="m">${MARK[st.cls] || "?"}</div><div class="n">${esc(st.name)}</div></div>`).join("");
+  const stop = stageStates(run, s.stages).find((st) => ["fail", "unsure", "running"].includes(st.cls));
+  if (stop) $("reason").textContent = stop.name + ": " + stop.reason;
+  else $("reason").textContent = run.outcome === "kept" ? "every gate passed; release kept" : "Hover a stage for its reason.";
+  for (const el of document.querySelectorAll(".stage")) el.onmouseenter = () => { $("reason").textContent = el.dataset.reason; };
+}
+
+function render(s) {
+  if (!s) return;
+  const h = s.health || {};
+  const err = h.error_rate_percent, p95 = h.p95_latency_ms ?? h.p95;
+  $("err").textContent = typeof err === "number" ? err.toFixed(1) + "%" : "n/a";
+  $("err").className = "v " + (typeof err !== "number" ? "dim" : err >= 5 ? "bad" : err > 1 ? "warn" : "ok");
+  $("p95").textContent = typeof p95 === "number" ? Math.round(p95) + " ms" : "n/a";
+  $("p95").className = "v " + (typeof p95 !== "number" ? "dim" : p95 >= 500 ? "bad" : p95 >= 200 ? "warn" : "ok");
+  $("profile").textContent = s.traffic_profile || "n/a";
+  $("profile").className = "v " + (!s.traffic_profile ? "dim" : s.traffic_profile === "normal" ? "ok" : "bad");
+  $("linestate").textContent = s.paused == null ? "?" : s.paused ? "PAUSED" : "RUNNING";
+  $("linestate").className = "v " + (s.paused ? "bad" : "ok");
+  $("pausebtn").textContent = s.paused ? "RESUME" : "PAUSE";
+  $("pausebtn").className = s.paused ? "paused" : "running";
+  $("chain").textContent = s.chain_verified == null ? "not checked" : s.chain_verified ? "verified ✓" : "BROKEN ✗";
+  $("chain").className = "v " + (s.chain_verified == null ? "dim" : s.chain_verified ? "ok" : "bad");
+
+  renderLine(s);
+
+  const sb = s.summary.scoreboard || {};
+  $("score").textContent = sb.runs ? `kept ${sb.promoted_kept} · escalated ${sb.escalated} · rolled back ${sb.rolled_back} · bad left ${sb.bad_changes_left}` : "";
+  const runs = (s.summary.runs || []).slice().reverse();
+  $("runs").innerHTML = runs.map((r) => `<tr class="click ${r.run_id === selected ? "sel" : ""}" data-run="${esc(r.run_id)}">
+      <td>${esc(r.run_id)}</td><td><span class="outcome o-${esc(r.outcome)}">${esc(r.outcome)}</span></td>
+      <td>${esc((r.started_at || "").replace("T", " ").replace("Z", ""))}</td>
+      <td>${r.run_id && r.run_id !== "-" && r.run_id !== "" ? `<button data-replay="${esc(r.run_id)}">Replay</button>` : ""}</td></tr>`).join("")
+    || '<tr><td colspan="4" class="dim">none</td></tr>';
+
+  const rbs = s.rollbacks || {};
+  $("releases").innerHTML = (s.releases || []).slice().reverse().map((r) => {
+    const rb = rbs[r.tag];
+    const can = ["kept", "watching"].includes(r.status) && !(rb && rb.status === "running");
+    const st = rb ? ` <span class="${rb.status === "pass" ? "ok" : rb.status === "running" ? "warn" : "bad"}" title="${esc((rb.reasons || []).join("; "))}">(manual rollback: ${esc(rb.status)})</span>` : "";
+    return `<tr><td>${esc(r.tag)}</td><td>${esc(r.run_id)}</td><td>${esc(r.status)}${st}</td>
+      <td>${can ? `<button data-rollback="${esc(r.tag)}">Roll back</button>` : ""}</td></tr>`;
+  }).join("") || '<tr><td colspan="4" class="dim">none</td></tr>';
+
+  $("inbox").innerHTML = (s.inbox || []).slice().reverse().map((c) => `<tr>
+      <td>${esc(c.run_id || "-")}</td><td class="sev-${esc(c.severity)}">${esc(c.severity)}</td>
+      <td>${esc(c.stage || c.kind || "")}</td><td>${esc(c.reason || c.summary || "")}</td></tr>`).join("")
+    || '<tr><td colspan="4" class="dim">empty</td></tr>';
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state");
+    if (r.ok) { last = await r.json(); render(last); }
+  } catch (e) { say("dashboard offline"); }
+}
+
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest("button, tr.click");
+  if (!t) return;
+  try {
+    if (t.dataset.break) { await post("/api/break/" + t.dataset.break); say("traffic: " + t.dataset.break); }
+    else if (t.id === "pausebtn") { await post(last && last.paused ? "/api/resume" : "/api/pause"); }
+    else if (t.id === "reportbtn") { await post("/api/report"); window.open("/report", "_blank"); }
+    else if (t.dataset.rollback) {
+      if (!confirm("Roll back " + t.dataset.rollback + "?")) return;
+      await post("/api/rollback/" + t.dataset.rollback); say("rollback of " + t.dataset.rollback + " started");
+    } else if (t.dataset.replay) {
+      ev.stopPropagation();
+      const out = $("replay"); out.style.display = "block"; out.textContent = "replaying " + t.dataset.replay + "…";
+      const r = await post("/api/replay/" + t.dataset.replay);
+      out.textContent = r.lines.join("\n"); out.className = r.reproduced ? "ok" : "bad";
+    } else if (t.dataset.run) { selected = t.dataset.run; render(last); }
+    else return;
+    poll();
+  } catch (e) { say("error: " + e.message); }
+});
+
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

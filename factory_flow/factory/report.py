@@ -104,7 +104,7 @@ def summarize(entries: list[dict], releases: list[dict], now: Optional[datetime]
 
     runs: dict[str, dict] = {}
     for entry in entries:
-        if "_unparseable" in entry:
+        if "_unparseable" in entry or entry.get("run_id") == "":   # "" = line-level events (pause/resume)
             continue
         run_id = str(entry.get("run_id", "-"))
         run = runs.setdefault(run_id, {"run_id": run_id, "stages": [], "timeline": [], "diff": "", "alert": {},
