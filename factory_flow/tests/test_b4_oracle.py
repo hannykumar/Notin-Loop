@@ -9,7 +9,7 @@ from factory.contracts import RunState
 from factory.sre_base import canonical_hash
 from factory.stages import oracle
 
-TARGET = workspace.TARGET_DIR
+TARGET = workspace.target_dir()
 FIXTURES = Path(__file__).parent / "fixtures"
 CART_FIX = (TARGET / "patches" / "cart_fix.diff").read_text()
 ORDERS_FIX = (TARGET / "patches" / "orders_helper_fix.diff").read_text()

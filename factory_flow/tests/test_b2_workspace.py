@@ -9,14 +9,14 @@ import pytest
 from factory import workspace
 
 SPARE_PORT = 8201  # never 8101/8102 (policy STABLE/CANARY ports are used by other sessions)
-CART_FIX = (workspace.TARGET_DIR / "patches" / "cart_fix.diff").read_text()
+CART_FIX = (workspace.target_dir() / "patches" / "cart_fix.diff").read_text()
 CART_REPRO = "fallback_tests/test_repro_cart.py"
 
 
 @pytest.fixture(scope="module", autouse=True)
 def target_repo():
-    if not (workspace.TARGET_DIR / ".git").exists():
-        subprocess.run([str(workspace.TARGET_DIR / "scripts" / "init_repo.sh")], check=True)
+    if not (workspace.target_dir() / ".git").exists():
+        subprocess.run([str(workspace.target_dir() / "scripts" / "init_repo.sh")], check=True)
     yield
     workspace.cleanup()
 
@@ -32,7 +32,7 @@ def prod():
 
 def test_prod_worktree_suite_is_green(prod: Path):
     assert prod.is_dir() and (prod / "app" / "main.py").exists()
-    assert prod.resolve() != workspace.TARGET_DIR.resolve()
+    assert prod.resolve() != workspace.target_dir().resolve()
     result = workspace.run_pytest(prod, "tests")
     assert (result["passed"], result["failed"], result["errors"]) == (16, 0, 0), result
     assert result["exit_code"] == 0 and result["failures"] == []
@@ -50,7 +50,7 @@ def test_repro_red_before_patch_green_after(prod: Path):
     after = workspace.run_pytest(prod, CART_REPRO)
     assert (after["passed"], after["failed"], after["errors"]) == (1, 0, 0), after
     # the main checkout is untouched (patched copy never leaks back)
-    assert "cart.get(\"items\", [])" not in (workspace.TARGET_DIR / "app" / "cart.py").read_text()
+    assert "cart.get(\"items\", [])" not in (workspace.target_dir() / "app" / "cart.py").read_text()
 
 
 def test_apply_diff_rejects_garbage_without_raising(prod: Path):
@@ -88,9 +88,11 @@ def test_instance_serves_on_spare_port_and_stops(prod: Path, tmp_path: Path):
     assert lines and all(e["instance"] == "canary" for e in lines)
 
 
-def test_default_log_path_is_this_checkouts_runs_dir():
-    assert workspace.SERVER_LOG == Path(workspace.__file__).resolve().parents[1] / "runs" / "server.log"
-    assert workspace.TARGET_DIR == Path(workspace.__file__).resolve().parents[1] / "target_service"
+def test_default_log_path_is_this_checkouts_runs_dir(monkeypatch):
+    monkeypatch.delenv("FACTORY_RUNS_DIR", raising=False)
+    monkeypatch.delenv("FACTORY_TARGET_SERVICE", raising=False)
+    assert workspace.server_log() == Path(workspace.__file__).resolve().parents[1] / "runs" / "server.log"
+    assert workspace.target_dir() == Path(workspace.__file__).resolve().parents[1] / "target_service"
 
 
 def test_cleanup_removes_worktrees():
@@ -101,7 +103,7 @@ def test_cleanup_removes_worktrees():
         workspace.cleanup()
     assert workspace.list_worktrees() == []
     assert not any(p.exists() for p in paths)
-    listed = subprocess.run(["git", "worktree", "list"], cwd=workspace.TARGET_DIR,
+    listed = subprocess.run(["git", "worktree", "list"], cwd=workspace.target_dir(),
                             capture_output=True, text=True, check=True).stdout
     assert all(str(p) not in listed for p in paths)
     assert len(listed.strip().splitlines()) == 1

@@ -9,7 +9,7 @@ import json
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from factory.audit import runs_dir
 from factory.contracts import RunState, Verdict
@@ -21,12 +21,38 @@ def _inbox_dir() -> Path:
     return path
 
 
-def escalate(state: RunState, verdict: Verdict, severity: Literal["normal", "critical"] = "normal") -> Path:
+SEVERITY_RANK = {"normal": 0, "high": 1, "critical": 2}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _write(run_id: str, case: dict) -> Path:
+    """One case per run: merge into runs/inbox/<run_id>.json (evidence merged, highest severity kept)."""
+    path = _inbox_dir() / f"{run_id}.json"
+    old = json.loads(path.read_text()) if path.exists() else {}
+    merged = {**old, **case, "evidence": {**old.get("evidence", {}), **case.get("evidence", {})}}
+    merged["created_at"] = old.get("created_at", case["created_at"])
+    merged["severity"] = max(old.get("severity", "normal"), case["severity"], key=lambda s: SEVERITY_RANK.get(s, 0))
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(merged, indent=2, default=str))
+    tmp.replace(path)
+    return path
+
+
+def open_case(kind: str, severity: str, run_id: str, summary: str, evidence: dict[str, Any]) -> Path:
+    """A case raised by a stage itself (rollback); the runner's escalate() later merges into the same file."""
+    return _write(run_id, {"run_id": run_id, "created_at": _now(), "kind": kind, "severity": severity,
+                           "summary": summary, "evidence": evidence})
+
+
+def escalate(state: RunState, verdict: Verdict, severity: Literal["normal", "high", "critical"] = "normal") -> Path:
     """Write runs/inbox/<run_id>.json for the stopping verdict and return its path."""
     verdicts = [asdict(v) for v in state.verdicts]
     case = {
         "run_id": state.run_id,
-        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "created_at": _now(),
         "severity": severity,
         "stage": verdict.stage,
         "status": verdict.status,
@@ -40,9 +66,7 @@ def escalate(state: RunState, verdict: Verdict, severity: Literal["normal", "cri
             **{v["stage"]: v["evidence"] for v in verdicts + [asdict(verdict)] if v["evidence"]},
         },
     }
-    path = _inbox_dir() / f"{state.run_id}.json"
-    path.write_text(json.dumps(case, indent=2, default=str))
-    return path
+    return _write(state.run_id, case)
 
 
 def list_cases() -> list[dict]:

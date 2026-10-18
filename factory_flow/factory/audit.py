@@ -72,14 +72,16 @@ def append(event: dict) -> dict:
     return entry
 
 
-def verify(path: Optional[Path] = None) -> tuple[bool, Optional[int]]:
-    """(ok, first_bad_seq). Checks seq order, prev_hash chain, entry_hash and HMAC of every line."""
-    key = _key()
+def verify(path: Optional[Path] = None, key: Optional[str] = None) -> tuple[bool, Optional[int]]:
+    """(ok, first_bad_seq). Checks seq order, prev_hash chain, entry_hash and HMAC of every line.
+    key defaults to AUDIT_HMAC_KEY (raises if neither is set)."""
+    key = key.encode() if key else _key()
     path = Path(path) if path else audit_path()
     if not path.exists():
         return True, None
     prev_hash = ""
     for position, line in enumerate(path.read_text().splitlines(), start=1):
+        entry = None
         try:
             entry = json.loads(line)
             ok = (
@@ -90,8 +92,8 @@ def verify(path: Optional[Path] = None) -> tuple[bool, Optional[int]]:
             )
         except (ValueError, KeyError, TypeError, AttributeError):
             ok = False
-        if not ok:
-            return False, position
+        if not ok:   # the bad entry's own seq when readable (a dropped line shows as the next seq)
+            return False, entry["seq"] if isinstance(entry, dict) and isinstance(entry.get("seq"), int) else position
         prev_hash = entry["entry_hash"]
     return True, None
 

@@ -94,7 +94,11 @@ def app_traceback_text(traceback: str) -> str:
 def _suite(workspace, prod_ref: str) -> tuple[list[dict], list[str]]:
     results = []
     for _ in range(2):
-        results.append(workspace.run_pytest(workspace.fresh_worktree(prod_ref)))
+        tree = workspace.fresh_worktree(prod_ref)
+        try:
+            results.append(workspace.run_pytest(tree, "tests"))
+        finally:
+            workspace.remove_worktree(tree)   # never workspace.cleanup(): it would stop the live stable server
     failing = [{f["nodeid"] for f in r["failures"]} for r in results]
     return results, sorted(failing[0] ^ failing[1])
 
@@ -132,19 +136,8 @@ def run(state: RunState, *, workspace=None, prod_ref: str = "prod") -> Verdict:
         return Verdict("qualify", status, reasons, checks, {**evidence, "checks": checks})
 
     if workspace is None:
-        try:  # STUB(track B): factory/workspace.py (B2) may not be ready; used as a module exposing the Workspace API
-            from factory import workspace as ws_module
-        except ImportError:
-            ws_module = None
-        if not (hasattr(ws_module, "fresh_worktree") and hasattr(ws_module, "run_pytest")):
-            checks["prod_suite_green"] = False
-            return Verdict("qualify", "unsure", ["workspace unavailable"], checks, {**evidence, "checks": checks})
-        workspace = ws_module
-    try:
-        results, flaky = _suite(workspace, prod_ref)
-    finally:
-        if hasattr(workspace, "cleanup"):
-            workspace.cleanup()
+        from factory import workspace
+    results, flaky = _suite(workspace, prod_ref)
     green = not flaky and all(r["failed"] == 0 and r["errors"] == 0 and r["passed"] > 0 for r in results)
     checks["prod_suite_green"] = green
     evidence.update(flaky_tests=flaky, suite_runs=[{k: r[k] for k in ("passed", "failed", "errors", "junit_path")}

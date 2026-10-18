@@ -42,13 +42,24 @@ from factory import workspace
 from factory.contracts import RELEASES_FILE_KEY, Release
 from factory.policy import ROLLBACK_LOOKBACK_S, STABLE_PORT
 
-RUNS_DIR = workspace.RUNS_DIR
-LEDGER_PATH = RUNS_DIR / "releases.json"
-DEPLOY_DIR = RUNS_DIR / "deploy"
-STABLE_WORKTREE = DEPLOY_DIR / "stable"
-STABLE_STATE = DEPLOY_DIR / "stable.json"
 INITIAL_TAG = "release-0"
 _TAG_RE = re.compile(r"^release-(\d+)$")
+
+
+# ---------------------------------------------------------------- paths (FACTORY_RUNS_DIR, read at call time)
+
+def ledger_path() -> Path:
+    return workspace.runs_dir() / "releases.json"
+
+
+def _deploy_dir() -> Path:
+    return workspace.runs_dir() / "deploy"
+
+
+def __getattr__(name: str) -> Any:   # releases.LEDGER_PATH keeps working, resolved per access
+    if name == "LEDGER_PATH":
+        return ledger_path()
+    raise AttributeError(name)
 
 
 # ---------------------------------------------------------------- time helpers
@@ -65,7 +76,7 @@ def parse_iso(value: str) -> float:
 # ---------------------------------------------------------------- ledger
 
 def _path(path: Optional[Path]) -> Path:
-    return Path(path) if path is not None else LEDGER_PATH
+    return Path(path) if path is not None else ledger_path()
 
 
 def _from_dict(raw: dict) -> Release:
@@ -157,7 +168,7 @@ def by_hash(diff_sha256: str, path: Optional[Path] = None) -> Optional[Release]:
 # ---------------------------------------------------------------- git helpers
 
 def git(*args: str, cwd: Optional[Path] = None, check: bool = True) -> str:
-    proc = subprocess.run(["git", *args], cwd=str(cwd or workspace.TARGET_DIR), capture_output=True,
+    proc = subprocess.run(["git", *args], cwd=str(cwd or workspace.target_dir()), capture_output=True,
                           text=True, timeout=workspace.GIT_TIMEOUT_S)
     if check and proc.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {(proc.stderr or proc.stdout).strip()}")
@@ -176,25 +187,26 @@ def git_tags() -> list[str]:
 
 def _read_state() -> dict:
     try:
-        return json.loads(STABLE_STATE.read_text())
+        return json.loads((_deploy_dir() / "stable.json").read_text())
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
 def ensure_stable_worktree() -> Path:
     """Persistent detached worktree of target_service at runs/deploy/stable."""
-    DEPLOY_DIR.mkdir(parents=True, exist_ok=True)
-    if (STABLE_WORKTREE / ".git").exists():
+    wt = _deploy_dir() / "stable"
+    wt.parent.mkdir(parents=True, exist_ok=True)
+    if (wt / ".git").exists():
         common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                                cwd=str(STABLE_WORKTREE), capture_output=True, text=True)
-        if common.returncode == 0 and Path(common.stdout.strip()).resolve() == (workspace.TARGET_DIR / ".git").resolve():
-            return STABLE_WORKTREE
+                                cwd=str(wt), capture_output=True, text=True)
+        if common.returncode == 0 and Path(common.stdout.strip()).resolve() == (workspace.target_dir() / ".git").resolve():
+            return wt
     # missing, or stale after init_repo.sh --force recreated target_service/.git
-    if STABLE_WORKTREE.exists():
-        shutil.rmtree(STABLE_WORKTREE)
+    if wt.exists():
+        shutil.rmtree(wt)
     git("worktree", "prune", check=False)
-    git("worktree", "add", "--detach", str(STABLE_WORKTREE), INITIAL_TAG)
-    return STABLE_WORKTREE
+    git("worktree", "add", "--detach", str(wt), INITIAL_TAG)
+    return wt
 
 
 def stop_stable(timeout_s: float = 10.0) -> bool:
@@ -225,7 +237,7 @@ def deploy_stable(ref: str) -> dict:
     now = time.time()
     state = {"ref": ref, "commit": commit, "pid": info["pid"], "port": STABLE_PORT,
              "started_at": utc_iso(now), "started_ts": now}
-    STABLE_STATE.write_text(json.dumps(state, indent=2))
+    (_deploy_dir() / "stable.json").write_text(json.dumps(state, indent=2))
     return state
 
 

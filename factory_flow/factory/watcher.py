@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import json
 import math
-import os
+import re
 import threading
-from collections import deque
+import time
+from collections import Counter, deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -14,24 +15,48 @@ import httpx
 from prometheus_client.parser import text_string_to_metric_families
 
 from factory import policy
+from factory.audit import runs_dir
 from factory.contracts import MetricsSnapshot
-from factory.sre_base import FACTORY_FLOW_DIR
 
 MIN_SAMPLES = 3          # fewer requests than this in a window never count as a breach
 LOG_KEEP = 5000          # recent log lines kept per instance
+FRAME = re.compile(r'^\s*File "([^"]+)", line \d+, in (\S+)')
 
 
-def runs_dir() -> Path:
-    return Path(os.environ.get("FACTORY_RUNS_DIR", FACTORY_FLOW_DIR / "runs"))
-
-
-def parse_ts(value: str | datetime) -> datetime:
+def parse_ts(value: str | datetime | float) -> datetime:
+    """ISO string, datetime or epoch seconds -> aware UTC datetime."""
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
     dt = value if isinstance(value, datetime) else datetime.fromisoformat(value.replace("Z", "+00:00"))
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def app_frames(traceback: str) -> list[tuple[str, str]]:
+    """(app/... file, function) for frames under APP_DIR, deepest first."""
+    out = []
+    for line in (traceback or "").splitlines():
+        m = FRAME.match(line)
+        if not m:
+            continue
+        path = m.group(1)
+        if path.startswith(policy.APP_DIR):
+            out.append((path, m.group(2)))
+        elif f"/{policy.APP_DIR}" in path:
+            out.append((path[path.rfind(f"/{policy.APP_DIR}") + 1:], m.group(2)))
+    return out[::-1]
+
+
+def signature(entry: dict) -> str:
+    """'ExceptionType@app/file.py:function' (deepest app frame), else 'HTTP<status>@<route>'."""
+    frames = app_frames(entry.get("traceback", ""))
+    if entry.get("exception_type") and frames:
+        file, func = frames[0]
+        return f"{entry['exception_type']}@{file}:{func}"
+    return f"HTTP{entry.get('status')}@{entry.get('route') or entry.get('path')}"
 
 
 def _default_get(url: str) -> str:
@@ -76,7 +101,24 @@ def _p95_ms(new: dict, old: dict) -> Optional[float]:
     return None
 
 
+def _row(data: dict, path: str) -> Optional[dict]:
+    """One route's counters, or all routes summed for path "*"."""
+    if path != "*":
+        return data.get(path)
+    if not data:
+        return None
+    merged: dict = {"total": 0.0, "errors": 0.0, "buckets": {}}
+    for row in data.values():
+        merged["total"] += row["total"]
+        merged["errors"] += row["errors"]
+        for le, c in row["buckets"].items():
+            merged["buckets"][le] = merged["buckets"].get(le, 0.0) + c
+    return merged
+
+
 class Watcher:
+    """Thread-safe: one thread ticks (run_forever / start), others read. Reads tick themselves when stale."""
+
     def __init__(
         self,
         targets: Optional[dict[str, str]] = None,
@@ -93,22 +135,37 @@ class Watcher:
         self._log_offset = 0
         self._log_buf = ""
         self.logs: dict[str, deque] = {}                # instance -> deque[(ts, entry)]
+        self._lock = threading.RLock()
+        self._last_tick: Optional[float] = None         # time.monotonic() of the last tick
+        self._thread: Optional[threading.Thread] = None
+        self.on_breach: Optional[Callable[[dict], Any]] = None
 
     @property
     def log_path(self) -> Path:
         return self._log_path or runs_dir() / "server.log"
 
     def add_target(self, instance: str, base_url: str) -> None:
-        self.targets[instance] = base_url
+        with self._lock:
+            self.targets[instance] = base_url
 
     def remove_target(self, instance: str) -> None:
-        self.targets.pop(instance, None)
-        self.history.pop(instance, None)
+        with self._lock:
+            self.targets.pop(instance, None)
+            self.history.pop(instance, None)
+
+    def _fresh(self) -> None:
+        """Nobody ticking (stage run standalone)? Tick now so reads reflect the server."""
+        if self._last_tick is None or time.monotonic() - self._last_tick > 2 * policy.SCRAPE_INTERVAL_S:
+            self.tick()
 
     # --- one scrape interval ------------------------------------------------
     def tick(self, now: Optional[datetime] = None) -> list[dict]:
         """Scrape every target, tail the log, return breaches (stable only) at this tick."""
-        now = parse_ts(now) if now else datetime.now(timezone.utc)
+        with self._lock:
+            self._last_tick = time.monotonic()
+            return self._tick(parse_ts(now) if now else datetime.now(timezone.utc))
+
+    def _tick(self, now: datetime) -> list[dict]:
         for instance, base in list(self.targets.items()):
             try:
                 data = parse_metrics(self.http_get(base.rstrip("/") + "/metrics"))
@@ -127,7 +184,7 @@ class Watcher:
         breaches = []
         for instance, hist in self.history.items():
             for route in hist[-1][1]:
-                snap = self.current(route, instance)
+                snap = self._current(route, instance)
                 if not snap["samples"]:
                     if instance == "stable":
                         self._streaks.pop(route, None)   # no traffic breaks the streak
@@ -161,18 +218,35 @@ class Watcher:
                 self.scrape_errors["_loop"] = {"at": iso(datetime.now(timezone.utc)), "error": repr(exc)}
             stop_event.wait(policy.SCRAPE_INTERVAL_S)
 
+    def start(self, on_breach: Optional[Callable[[dict], Any]] = None) -> "Watcher":
+        """Tick in a daemon thread (once per process); breaches go to on_breach (replaces the previous one)."""
+        with self._lock:
+            if on_breach is not None:
+                self.on_breach = on_breach
+            if self._thread is None or not self._thread.is_alive():
+                self._thread = threading.Thread(
+                    target=self.run_forever, name="watcher", daemon=True,
+                    args=(threading.Event(), lambda b: self.on_breach and self.on_breach(b)))
+                self._thread.start()
+        return self
+
     # --- metrics views --------------------------------------------------------
     def current(self, path: str, instance: str = "stable") -> MetricsSnapshot:
-        """Metrics for route `path` between the oldest and newest scrape in the sliding window."""
+        """Metrics for route `path` ("*" = all routes) between the oldest and newest scrape in the window."""
+        with self._lock:
+            self._fresh()
+            return self._current(path, instance)
+
+    def _current(self, path: str, instance: str) -> MetricsSnapshot:
         hist = self.history.get(instance)
         snap: MetricsSnapshot = {"metrics": {}, "instance": instance, "path": path, "window_s": 0.0, "samples": 0}
         if not hist or len(hist) < 2:
             return snap
         (t_old, old), (t_new, new) = hist[0], hist[-1]   # tick() keeps hist[0] at about now - ALERT_WINDOW_S
-        row_new = new.get(path)
+        row_new = _row(new, path)
         if not row_new:
             return snap
-        row_old = old.get(path, {"total": 0.0, "errors": 0.0, "buckets": {}})
+        row_old = _row(old, path) or {"total": 0.0, "errors": 0.0, "buckets": {}}
         total = _delta(row_new["total"], row_old["total"])
         snap["window_s"] = (t_new - t_old).total_seconds()
         snap["samples"] = int(total)
@@ -186,7 +260,10 @@ class Watcher:
 
     def baseline(self, path: str, instance: str = "stable") -> MetricsSnapshot:
         """Most recent healthy window for the route (frozen while it is breached); samples=0 if none."""
-        return self._baselines.get((instance, path)) or {
+        with self._lock:
+            self._fresh()
+            found = self._baselines.get((instance, path))
+        return found or {
             "metrics": {}, "instance": instance, "path": path, "window_s": 0.0, "samples": 0}
 
     # --- log tail ------------------------------------------------------------------
@@ -220,10 +297,31 @@ class Watcher:
     ) -> list[dict]:
         """Tailed log entries with since <= ts <= until, optionally for one instance and route, in time order."""
         lo, hi = parse_ts(since), parse_ts(until) if until else None
-        rows = [
-            (ts, e)
-            for inst, q in self.logs.items() if instance in (None, inst)
-            for ts, e in q
-            if ts >= lo and (hi is None or ts <= hi) and route in (None, e.get("route"))
-        ]
+        with self._lock:
+            self._fresh()
+            rows = [
+                (ts, e)
+                for inst, q in self.logs.items() if instance in (None, inst)
+                for ts, e in q
+                if ts >= lo and (hi is None or ts <= hi) and route in (None, e.get("route"))
+            ]
         return [e for _, e in sorted(rows, key=lambda r: r[0])]
+
+    def signatures(self, since_ts: str | datetime | float, instance: str = "stable",
+                   until_ts: str | datetime | float | None = None) -> Counter:
+        """Signature counts of 5xx log lines on `instance` with since_ts <= ts <= until_ts (default: now)."""
+        return Counter(signature(e) for e in self.log_lines(since_ts, until_ts, instance=instance)
+                       if int(e.get("status", 0)) >= 500)
+
+
+_DEFAULT: Optional[Watcher] = None
+_DEFAULT_LOCK = threading.Lock()
+
+
+def default() -> Watcher:
+    """Process-wide Watcher, ticking in a daemon thread. Stages use it when no watcher is injected."""
+    global _DEFAULT
+    with _DEFAULT_LOCK:
+        if _DEFAULT is None:
+            _DEFAULT = Watcher()
+        return _DEFAULT.start()

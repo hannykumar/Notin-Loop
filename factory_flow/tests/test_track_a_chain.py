@@ -5,7 +5,6 @@ proof that an interlock without evidence never lets a change through. (The live 
 from __future__ import annotations
 
 from factory import alerts, audit, inbox, pipeline, workspace
-from factory.stages import inspect_diff
 from factory.fixers import ScriptedFixer
 from test_investigate import CART_SIG, mini, sig_if_500  # noqa: F401  (mini is a fixture)
 from test_watcher import replay
@@ -22,9 +21,11 @@ def test_cart_bug_runs_the_real_chain_and_canary_stops_without_a_server(mini, tm
         if cart:
             break
     repo = make_mini_repo(tmp_path)
-    # Track B modules hard-code factory_flow/target_service; point them at the mini repo.  # ponytail: T1 should read FACTORY_TARGET_SERVICE
-    monkeypatch.setattr(workspace, "TARGET_DIR", repo)
-    monkeypatch.setattr(inspect_diff, "TARGET_SERVICE_DIR", repo)
+    monkeypatch.setenv("FACTORY_TARGET_SERVICE", str(repo))
+
+    def no_server(*a, **kw):                        # unit tests never bind 8101/8102
+        raise RuntimeError("no server in unit tests")
+    monkeypatch.setattr(workspace, "start_instance", no_server)
     stub_ws = StubWorkspace(repo)
     deps = {
         "watcher": watcher,
@@ -43,7 +44,8 @@ def test_cart_bug_runs_the_real_chain_and_canary_stops_without_a_server(mini, tm
     passed = ["triage", "investigate", "qualify", "reproduce", "fix", "inspect_diff", "oracle"]
     assert [v.stage for v in state.verdicts] == passed + ["canary"]
     assert all(statuses[s] == "pass" for s in passed), [(v.stage, v.status, v.reasons) for v in state.verdicts]
-    assert statuses["canary"] != "pass"                              # no live server => no evidence => line stops
+    assert statuses["canary"] == "unsure"                            # no live server => no evidence => line stops
+    assert not stub_ws._trees and workspace.list_worktrees() == []   # stages removed every worktree they made
     assert state.bug.signature == CART_SIG and state.failing_test.exists() and state.diff
     assert state.verdicts[3].evidence["fallback_used"] is True
     assert inbox.get(state.run_id) is not None

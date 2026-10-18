@@ -16,21 +16,15 @@ Usage:  python -m factory.report [--audit P] [--releases P] [--out P]
 from __future__ import annotations
 
 import argparse
-import hashlib
-import hmac as hmac_mod
 import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from factory import audit
 from factory.contracts import RELEASES_FILE_KEY
-from factory.sre_base import FACTORY_FLOW_DIR, canonical_hash
-
-RUNS_DIR = FACTORY_FLOW_DIR / "runs"
-DEFAULT_AUDIT = RUNS_DIR / "audit.jsonl"
-DEFAULT_RELEASES = RUNS_DIR / "releases.json"
-DEFAULT_OUT = RUNS_DIR / "report.html"
+from factory.sre_base import FACTORY_FLOW_DIR
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
 # PRD 6 stage order. Anything else in the log (alert, escalate, inbox, run_start) is a meta event:
@@ -45,8 +39,8 @@ OUTCOME_STYLE = {"kept": "green", "promoted": "cyan", "escalated": "yellow", "ro
 
 # --- Readers -----------------------------------------------------------------------
 
-def load_audit(path: Path | str = DEFAULT_AUDIT) -> list[dict]:
-    path = Path(path)
+def load_audit(path: Path | str | None = None) -> list[dict]:
+    path = Path(path or audit.audit_path())
     if not path.exists():
         return []
     entries = []
@@ -59,34 +53,11 @@ def load_audit(path: Path | str = DEFAULT_AUDIT) -> list[dict]:
     return entries
 
 
-def load_releases(path: Path | str = DEFAULT_RELEASES) -> list[dict]:
-    path = Path(path)
+def load_releases(path: Path | str | None = None) -> list[dict]:
+    path = Path(path or audit.runs_dir() / "releases.json")
     if not path.exists():
         return []
     return list(json.loads(path.read_text()).get(RELEASES_FILE_KEY, []))
-
-
-# --- Chain verification ------------------------------------------------------------
-
-# STUB(track A): replace with audit.verify() once A2 lands
-def verify_chain(entries: list[dict], hmac_key: Optional[str] = None) -> tuple[bool, Optional[int]]:
-    """(ok, first_bad_seq). Recomputes entry_hash, checks prev_hash links, and the HMAC if a key is given."""
-    prev_hash: Optional[str] = None
-    for index, entry in enumerate(entries):
-        seq = entry.get("seq", index + 1) if isinstance(entry, dict) else index + 1
-        if "_unparseable" in entry:
-            return False, index + 1
-        body = {k: v for k, v in entry.items() if k not in ("entry_hash", "hmac")}
-        if canonical_hash(body) != entry.get("entry_hash"):
-            return False, seq
-        if prev_hash is not None and entry.get("prev_hash") != prev_hash:
-            return False, seq
-        if hmac_key:
-            expected = hmac_mod.new(hmac_key.encode(), entry["entry_hash"].encode(), hashlib.sha256).hexdigest()
-            if not hmac_mod.compare_digest(expected, str(entry.get("hmac", ""))):
-                return False, seq
-        prev_hash = entry["entry_hash"]
-    return True, None
 
 
 # --- Summary -----------------------------------------------------------------------
@@ -243,7 +214,7 @@ def render_live(summary: dict, health: Optional[dict] = None):
     return Panel(Group(*parts), title="SRE Dark Factory", border_style="blue")
 
 
-def watch(audit_path: Path | str = DEFAULT_AUDIT, releases_path: Path | str = DEFAULT_RELEASES,
+def watch(audit_path: Path | str | None = None, releases_path: Path | str | None = None,
           health_fn: Callable[[], dict] = dict, refresh_s: float = 1.0) -> None:
     """Re-read the audit log and releases every refresh_s seconds and redraw (Ctrl+C to stop)."""
     import time
@@ -264,16 +235,20 @@ def watch(audit_path: Path | str = DEFAULT_AUDIT, releases_path: Path | str = DE
 
 # --- HTML report -------------------------------------------------------------------
 
-def render_html(audit_path: Path | str = DEFAULT_AUDIT, releases_path: Path | str = DEFAULT_RELEASES,
-                out_path: Path | str = DEFAULT_OUT, hmac_key: Optional[str] = None,
+def render_html(audit_path: Path | str | None = None, releases_path: Path | str | None = None,
+                out_path: Path | str | None = None, hmac_key: Optional[str] = None,
                 now: Optional[datetime] = None) -> Path:
-    """Write a self-contained report.html (inline CSS, no JS). HMAC is checked if a key or AUDIT_HMAC_KEY is set."""
+    """Write a self-contained report.html (inline CSS, no JS). The chain is verified with audit.verify, which
+    needs a key (hmac_key or AUDIT_HMAC_KEY); without one the report says "not verified"."""
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+    audit_path = Path(audit_path or audit.audit_path())
+    releases_path = Path(releases_path or audit.runs_dir() / "releases.json")
+    out_path = Path(out_path or audit.runs_dir() / "report.html")
     entries = load_audit(audit_path)
     releases = load_releases(releases_path)
     key = hmac_key if hmac_key is not None else os.environ.get("AUDIT_HMAC_KEY") or None
-    ok, first_bad = verify_chain(entries, key)
+    ok, first_bad = audit.verify(audit_path, key) if key else (False, None)
     summary = summarize(entries, releases, now=now)
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=select_autoescape(["html"]))
     html = env.get_template("report.html").render(
@@ -289,9 +264,9 @@ def render_html(audit_path: Path | str = DEFAULT_AUDIT, releases_path: Path | st
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m factory.report", description="Render the HTML report.")
-    parser.add_argument("--audit", default=str(DEFAULT_AUDIT))
-    parser.add_argument("--releases", default=str(DEFAULT_RELEASES))
-    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    parser.add_argument("--audit")
+    parser.add_argument("--releases")
+    parser.add_argument("--out")
     args = parser.parse_args(argv)
     print(render_html(args.audit, args.releases, args.out))
     return 0

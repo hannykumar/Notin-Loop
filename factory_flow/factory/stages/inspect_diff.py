@@ -32,7 +32,6 @@ from factory.policy import (
 from factory.sre_base import canonical_hash
 
 STAGE = "inspect_diff"
-TARGET_SERVICE_DIR = Path(__file__).resolve().parents[2] / "target_service"
 
 # Not in policy.py (frozen after K2): stage-local constants for rules policy.py does not cover.
 NEAR_TRACEBACK_LINES = 10                       # a hunk must be within this many lines of a traceback line
@@ -380,15 +379,20 @@ def inspect(diff: str, *, traceback: str = "", frozen_test: str = "", worktree: 
     return Verdict(stage=STAGE, status=status, reasons=reasons, checks=checks, evidence=evidence)
 
 
-def run(state: RunState) -> Verdict:
+def run(state: RunState, workspace=None) -> Verdict:
     """Stage wrapper: diff from the fixer, traceback from the bug report, frozen test from reproduce.
-    The AST check parses a temp copy of target_service (prod checkout) with the diff applied."""
+    The AST / pre-image checks read a fresh worktree of `prod` (nothing in it is executed)."""
+    if workspace is None:
+        from factory import workspace
     traceback = state.bug.traceback if state.bug else ""
     frozen_test = ""
     if state.failing_test and Path(state.failing_test).is_file():
         frozen_test = Path(state.failing_test).read_text()
-    worktree = TARGET_SERVICE_DIR if TARGET_SERVICE_DIR.is_dir() else None
-    return inspect(state.diff, traceback=traceback, frozen_test=frozen_test, worktree=worktree)
+    worktree = workspace.fresh_worktree("prod")
+    try:
+        return inspect(state.diff, traceback=traceback, frozen_test=frozen_test, worktree=worktree)
+    finally:
+        workspace.remove_worktree(worktree)
 
 
 __all__ = ["CHECK_NAMES", "DiffParseError", "inspect", "parse_unified_diff", "run"]

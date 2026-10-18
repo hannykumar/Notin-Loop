@@ -28,11 +28,11 @@ from gen_sample_audit import TEST_HMAC_KEY, Chain  # noqa: E402
 
 from factory import workspace  # noqa: E402
 from factory.contracts import BugReport, Verdict  # noqa: E402
-from factory.replay import BUG_FILE, DEFAULT_REF, DIFF_FILE, rerun_inspect, sha256_file  # noqa: E402
+from factory.replay import BUG_FILE, DEFAULT_REF, DIFF_FILE, rerun_inspect, test_hash  # noqa: E402
 from factory.sre_base import canonical_hash  # noqa: E402
 from factory.stages import oracle  # noqa: E402
 
-TARGET = workspace.TARGET_DIR
+TARGET = workspace.target_dir()
 CART_FIX = TARGET / "patches" / "cart_fix.diff"
 ROGUE = HERE / "rogue_hardcode.diff"
 REPRO_CART = TARGET / "fallback_tests" / "test_repro_cart.py"
@@ -41,8 +41,8 @@ PROMOTED, REJECTED = "run_cart_promoted", "run_cart_rejected"
 __all__ = ["TEST_HMAC_KEY", "PROMOTED", "REJECTED", "build"]
 
 
-# STUB(track A): audit.append (A2) -- until factory/audit.py exists, entries are chained with gen_sample_audit.Chain
-# (entry_hash = canonical_hash(entry without entry_hash/hmac), prev_hash, HMAC-SHA256(TEST_HMAC_KEY, entry_hash)).
+# Entries are chained with gen_sample_audit.Chain (fixed timestamps), in audit.append's format: entry_hash =
+# canonical_hash(entry without entry_hash/hmac), prev_hash ("" first), HMAC-SHA256(TEST_HMAC_KEY, entry_hash).
 def append_verdict(chain: Chain, run_id: str, v: Verdict, extra_evidence: dict | None = None) -> dict:
     return chain.add(run_id, v.stage, v.status, reasons=v.reasons, checks=v.checks,
                      evidence={**v.evidence, **(extra_evidence or {})}, route=v.route)
@@ -68,7 +68,7 @@ def _run_prefix(chain: Chain, run_id: str, art: Path, bug: BugReport, diff: str,
     test = art / REPRO_CART.name
     test.write_bytes(REPRO_CART.read_bytes())
     (art / DIFF_FILE).write_text(diff)
-    hashes = {"bug": canonical_hash(asdict(bug)), "test": sha256_file(test), "diff": oracle.diff_hash(diff)}
+    hashes = {"bug": canonical_hash(asdict(bug)), "test": test_hash(test), "diff": oracle.diff_hash(diff)}
 
     chain.start(run_id, "ALERT-cart-total", "/cart/total")
     chain.add(run_id, "triage", "pass", checks={"no_own_recent_release": True})

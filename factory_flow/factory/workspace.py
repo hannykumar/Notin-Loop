@@ -28,12 +28,25 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from factory.audit import runs_dir
 from factory.contracts import PytestFailure, PytestResult
 
 FACTORY_FLOW_DIR = Path(__file__).resolve().parents[1]
-TARGET_DIR = FACTORY_FLOW_DIR / "target_service"
-RUNS_DIR = FACTORY_FLOW_DIR / "runs"
-SERVER_LOG = RUNS_DIR / "server.log"
+
+
+def target_dir() -> Path:
+    """target_service git repo (FACTORY_TARGET_SERVICE overrides), read at call time."""
+    return Path(os.environ.get("FACTORY_TARGET_SERVICE", FACTORY_FLOW_DIR / "target_service"))
+
+
+def server_log() -> Path:
+    return runs_dir() / "server.log"
+
+
+def __getattr__(name: str) -> Any:   # old constant names, resolved per access
+    if name in ("TARGET_DIR", "RUNS_DIR", "SERVER_LOG"):
+        return {"TARGET_DIR": target_dir, "RUNS_DIR": runs_dir, "SERVER_LOG": server_log}[name]()
+    raise AttributeError(name)
 
 PYTEST_TIMEOUT_S = 120
 GIT_TIMEOUT_S = 60
@@ -56,11 +69,11 @@ def _git(args: list[str], cwd: Path, stdin: str | None = None) -> subprocess.Com
 
 def fresh_worktree(ref: str) -> Path:
     """New detached git worktree of target_service at ref, in a temp dir."""
-    if not (TARGET_DIR / ".git").exists():
-        raise RuntimeError(f"{TARGET_DIR} is not a git repo; run target_service/scripts/init_repo.sh")
+    if not (target_dir() / ".git").exists():
+        raise RuntimeError(f"{target_dir()} is not a git repo; run target_service/scripts/init_repo.sh")
     parent = Path(tempfile.mkdtemp(prefix="sre-wt-"))
     path = parent / "target_service"
-    proc = _git(["worktree", "add", "--detach", str(path), ref], TARGET_DIR)
+    proc = _git(["worktree", "add", "--detach", str(path), ref], target_dir())
     if proc.returncode != 0:
         shutil.rmtree(parent, ignore_errors=True)
         raise RuntimeError(f"git worktree add {ref!r} failed: {proc.stderr.strip()}")
@@ -71,9 +84,9 @@ def fresh_worktree(ref: str) -> Path:
 def remove_worktree(path: Path) -> None:
     path = Path(path)
     parent = _WORKTREES.pop(path, path.parent)
-    _git(["worktree", "remove", "--force", str(path)], TARGET_DIR)
+    _git(["worktree", "remove", "--force", str(path)], target_dir())
     shutil.rmtree(parent if parent.name.startswith("sre-wt-") else path, ignore_errors=True)
-    _git(["worktree", "prune"], TARGET_DIR)
+    _git(["worktree", "prune"], target_dir())
 
 
 def list_worktrees() -> list[Path]:
@@ -205,7 +218,7 @@ def start_instance(path: Path, port: int, name: str, log_path: Path | None = Non
     """Run uvicorn app.main:app on 127.0.0.1:port from path; wait until GET / answers.
 
     name is the SRE_INSTANCE value ("stable" | "canary") and the registry key.
-    SRE_LOG_PATH is <factory_flow>/runs/server.log (of this checkout) unless log_path is given.
+    SRE_LOG_PATH is server_log() (<runs dir>/server.log) unless log_path is given.
     Returns {"name", "port", "pid", "path"}. Raises RuntimeError if busy or not up in time.
     """
     path = Path(path).resolve()
@@ -213,10 +226,9 @@ def start_instance(path: Path, port: int, name: str, log_path: Path | None = Non
         raise RuntimeError(f"instance {name!r} already running on port {_INSTANCES[name]['port']}")
     if port_busy(port):
         raise RuntimeError(f"port {port} is busy")
-    RUNS_DIR.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "PYTHONPATH": str(path), "PYTHONDONTWRITEBYTECODE": "1",
-           "SRE_INSTANCE": name, "SRE_LOG_PATH": str(log_path or SERVER_LOG)}
-    out = open(RUNS_DIR / f"instance-{name}.out", "w", encoding="utf-8")
+           "SRE_INSTANCE": name, "SRE_LOG_PATH": str(log_path or server_log())}
+    out = open(runs_dir() / f"instance-{name}.out", "w", encoding="utf-8")
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port),
          "--log-level", "warning"],
@@ -253,7 +265,8 @@ def instances() -> dict[str, dict]:
 
 
 def cleanup() -> None:
-    """Stop all instances and remove all worktrees this process created."""
+    """Stop ALL instances (stable too) and remove all worktrees this process created: process shutdown only.
+    Stages remove just their own worktrees with remove_worktree()."""
     for name in list(_INSTANCES):
         try:
             stop_instance(name)
@@ -264,5 +277,5 @@ def cleanup() -> None:
             remove_worktree(path)
         except Exception:  # noqa: BLE001
             pass
-    if (TARGET_DIR / ".git").exists():
-        _git(["worktree", "prune"], TARGET_DIR)
+    if (target_dir() / ".git").exists():
+        _git(["worktree", "prune"], target_dir())

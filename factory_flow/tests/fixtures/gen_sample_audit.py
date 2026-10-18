@@ -23,7 +23,7 @@ from factory.contracts import RELEASES_FILE_KEY, Release  # noqa: E402
 from factory.sre_base import SRE_AGENT_BASE_COMMIT, canonical_hash  # noqa: E402
 
 TEST_HMAC_KEY = "test-audit-key"
-GENESIS = "0" * 64
+GENESIS = ""   # audit.append: the first entry has prev_hash ""
 T0 = datetime(2026, 10, 18, 14, 0, 0, tzinfo=timezone.utc)
 
 CART_DIFF = """--- a/app/cart.py

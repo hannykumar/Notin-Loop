@@ -42,8 +42,9 @@ rollback(release_tag, *, actor="agent", ...) -> Verdict("rollback")
 run(state, watcher=None) uses state.release and state.bug. Manual path:
     python -m factory.stages.rollback release-N      -> rollback(tag, actor="human"), same code.
 
-Audit: Track A's audit.append (A2) is not built; pass audit_append=<callable> to have the Verdict appended
-(entry fields per PRD 7.7: run_id, stage, actor, status, reasons, checks, evidence).
+Audit: in a pipeline run the runner audits the Verdict; a manual call passes audit_append=audit.append
+(main() does) to have it appended (entry fields per PRD 7.7: run_id, stage, actor, status, reasons, checks, evidence).
+Inbox: inbox.open_case writes runs/inbox/<run_id>.json; the runner's escalation merges into the same case.
 
 Ported/patterned from SRE-agent @ b4f7e0c:
 - executor/engine.py execute_rollback / executor/service.py rollback: pick the rollback action for what was
@@ -63,7 +64,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from factory import releases, stub_inbox, workspace
+from factory import audit, inbox, releases, workspace
+from factory import watcher as _watcher
 from factory.contracts import BugReport, Release, RunState, Verdict
 from factory.policy import (
     ALERT_WINDOW_S,
@@ -78,10 +80,9 @@ from factory.policy import (
 from factory.sre_base import canonical_hash
 from factory.stages.canary import judge_slo
 from factory.stages.promote import GIT_IDENTITY, _signature_file
-from factory.stub_watcher import default_watcher, signature_of, watcher_signatures
+from factory.watcher import signature
 
 STAGE = "rollback"
-PAUSED_PATH = releases.RUNS_DIR / "PAUSED"
 STABLE_URL = f"http://127.0.0.1:{STABLE_PORT}"
 SETTLE_S = ALERT_WINDOW_S + SCRAPE_INTERVAL_S   # full watcher window of post-restart traffic
 PROBE_COUNT = 3
@@ -108,11 +109,6 @@ def _safe_path(method: str, path: str) -> bool:
     return method in SAFE_REPLAY_METHODS and any(p.match(path or "") for p in SAFE_REPLAY_PATHS)
 
 
-def _entries(watcher: Any, since_ts: float, until_ts: float):
-    fn = getattr(watcher, "entries", None)
-    return (fn if callable(fn) else default_watcher().entries)(since_ts, until_ts, "stable")
-
-
 def _watch_period(release: Release) -> tuple[float, float]:
     start = releases.parse_iso(release.promoted_at)
     end = time.time() if release.status == "watching" else max(releases.parse_iso(release.watch_until),
@@ -124,8 +120,8 @@ def release_new_signatures(release: Release, watcher: Any, bug_signature: str = 
     """Signatures seen on stable during the release's watch period, absent in the WATCH_WINDOW_S before
     promotion, in a file the release touched, excluding the original bug signature (same rule as watch)."""
     start, end = _watch_period(release)
-    before = watcher_signatures(watcher, start - WATCH_WINDOW_S, "stable", start)
-    after = watcher_signatures(watcher, start, "stable", end)
+    before = watcher.signatures(start - WATCH_WINDOW_S, "stable", start)
+    after = watcher.signatures(start, "stable", end)
     touched = set(release.files_touched)
     return sorted(s for s in after if s not in before and s != bug_signature
                   and (not touched or _signature_file(s) in touched))
@@ -137,8 +133,8 @@ def probe_requests(release: Release, watcher: Any, signatures: list[str]) -> lis
         return []
     start, end = _watch_period(release)
     wanted, found = set(signatures), []
-    for e in _entries(watcher, start, end):
-        if int(e.get("status", 0)) < 500 or signature_of(e) not in wanted:
+    for e in watcher.log_lines(start, end, instance="stable"):
+        if int(e.get("status", 0)) < 500 or signature(e) not in wanted:
             continue
         req = {"path": e.get("path", ""), "query": dict(e.get("query") or {})}
         if _safe_path(e.get("method", ""), req["path"]) and req not in found:
@@ -188,7 +184,7 @@ def verify_health(release: Release, watcher: Any, *, deployed_ts: float, new_sig
     if delay > 0:
         sleep(delay)
     now = time.time()
-    after_sigs = watcher_signatures(watcher, deployed_ts, "stable", now)
+    after_sigs = watcher.signatures(deployed_ts, "stable", now)
     out["signatures_after_restart"] = dict(after_sigs)
     still = sorted(s for s in new_signatures if after_sigs.get(s))
     checks["new_signatures_gone"] = not still
@@ -237,17 +233,23 @@ def _tag_at(commit: str) -> str:
     return releases.previous_tag()
 
 
+def _route(watcher: Any, path: str, since_ts: float) -> str:
+    """Route template the watcher keys metrics by for a concrete request path (path itself if unseen)."""
+    return next((e["route"] for e in watcher.log_lines(since_ts, instance="stable")
+                 if e.get("path") == path and e.get("route")), path)
+
+
 def _rc(args: list[str], cwd: Optional[Path] = None) -> int:
     """git exit code (releases.git raises on failure; revert/merge-base need the code)."""
-    return subprocess.run(["git", *args], cwd=str(cwd or workspace.TARGET_DIR), capture_output=True,
+    return subprocess.run(["git", *args], cwd=str(cwd or workspace.target_dir()), capture_output=True,
                           text=True, timeout=workspace.GIT_TIMEOUT_S).returncode
 
 
 def _pause(reason: str, tag: str, run_id: str, actor: str) -> Path:
-    PAUSED_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PAUSED_PATH.write_text(json.dumps({"reason": reason, "release": tag, "run_id": run_id, "actor": actor,
-                                       "ts": releases.utc_iso()}, indent=2))
-    return PAUSED_PATH
+    path = workspace.runs_dir() / "PAUSED"   # same file as pipeline.is_paused()
+    path.write_text(json.dumps({"reason": reason, "release": tag, "run_id": run_id, "actor": actor,
+                                "ts": releases.utc_iso()}, indent=2))
+    return path
 
 
 # ---------------------------------------------------------------- stage
@@ -257,7 +259,7 @@ def rollback(release_tag: str, *, actor: str = "agent", run_id: str = "", reason
              settle_s: float = SETTLE_S, sleep: Callable[[float], None] = time.sleep,
              probe: Callable[..., int] = http_probe,
              audit_append: Optional[Callable[[dict], Any]] = None) -> Verdict:
-    watcher = watcher or default_watcher()
+    watcher = watcher or _watcher.default()
     checks: dict[str, bool] = {}
     evidence: dict[str, Any] = {"tag": release_tag, "actor": actor, "reason": reason}
     verdict = _rollback(release_tag, actor, run_id, reason, watcher, new_signatures, bug, settle_s, sleep,
@@ -307,7 +309,7 @@ def _rollback(tag: str, actor: str, run_id: str, reason: str, watcher: Any, new_
                                "new_signatures": new_signatures},
                 "rollback": {k: v for k, v in evidence.items() if k != "release"},
                 "verdict": {"status": status, "reasons": reasons, "checks": dict(checks)}}
-        path = stub_inbox.open_case("rollback", severity, run_id, summary, case)
+        path = inbox.open_case("rollback", severity, run_id, summary, case)
         evidence["inbox_case"] = str(path)
         evidence["severity"] = severity
         if actor != "human":
@@ -390,7 +392,8 @@ def _rollback(tag: str, actor: str, run_id: str, reason: str, watcher: Any, new_
                         f"rollback of {tag}: stable did not restart; pause line")
 
     # 3. verify ---------------------------------------------------------------
-    reopened = [bug.sample_request.get("path")] if bug and bug.sample_request.get("path") else []
+    reopened = ([_route(watcher, bug.sample_request["path"], releases.parse_iso(release.promoted_at) - WATCH_WINDOW_S)]
+                if bug and bug.sample_request.get("path") else [])
     health = verify_health(release, watcher, deployed_ts=float(deployed.get("started_ts") or time.time()),
                            new_signatures=new_signatures, probes=probes, reopened_paths=reopened,
                            settle_s=settle_s, sleep=sleep, probe=probe)
@@ -425,7 +428,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if len(argv) != 1:
         print("usage: python -m factory.stages.rollback release-N", file=sys.stderr)
         return 2
-    v = rollback(argv[0], actor="human", reason="manual rollback")
+    v = rollback(argv[0], actor="human", reason="manual rollback", audit_append=audit.append)
     print(json.dumps({"stage": v.stage, "status": v.status, "reasons": v.reasons, "checks": v.checks,
                       "evidence": {k: v.evidence.get(k) for k in (
                           "method", "prod_before", "prod_after", "deployed_ref", "verification_outcome",

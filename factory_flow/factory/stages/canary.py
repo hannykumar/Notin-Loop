@@ -8,9 +8,9 @@ run(state, watcher=None) -> Verdict("canary"):
      watcher window (ALERT_WINDOW_S) of canary traffic exists, and judge each sample with judge_slo();
   5. finally (always): canary_url reset to "", canary stopped, worktree removed.
 
-Sampling only from ALERT_WINDOW_S onwards keeps protocol-only watchers (current(path, instance) over the
-last ALERT_WINDOW_S) from seeing lines of an earlier canary; samples at 10 s and 12 s cover the whole
-12 s window. Canary samples == 0 (or stable samples == 0) => "unsure".
+The watcher scrapes the canary only while it runs (add_target / remove_target), so its "canary" window holds
+this canary's traffic only; sampling from ALERT_WINDOW_S onwards waits for a full window. Canary samples == 0
+(or stable samples == 0) => "unsure".
 
 Ported/patterned from SRE-agent @ b4f7e0c:
 - sre_base.classify_verification_outcome (ported from executor/engine.py) decides "regressed".
@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from factory import watcher as _watcher
 from factory import workspace
 from factory.contracts import MetricsSnapshot, RunState, Verdict
 from factory.policy import (
@@ -39,7 +40,6 @@ from factory.policy import (
     SLO_MAX_P95_MS,
 )
 from factory.sre_base import canonical_hash, classify_verification_outcome
-from factory.stub_watcher import default_watcher
 
 STAGE = "canary"
 CANARY_URL = f"http://127.0.0.1:{CANARY_PORT}"
@@ -59,7 +59,7 @@ def _traffic():
     global _TRAFFIC_MODULE
     if _TRAFFIC_MODULE is None:
         spec = importlib.util.spec_from_file_location(
-            "factory_traffic_generate", workspace.TARGET_DIR / "traffic" / "generate.py")
+            "factory_traffic_generate", workspace.target_dir() / "traffic" / "generate.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)  # type: ignore[union-attr]
         _TRAFFIC_MODULE = module
@@ -135,7 +135,6 @@ def _verdict(status: str, reasons: list[str], checks: dict, evidence: dict) -> V
 def run(state: RunState, watcher: Any = None, *, window_s: float = CANARY_WINDOW_S,
         interval_s: float = SCRAPE_INTERVAL_S, judge_after_s: float = ALERT_WINDOW_S,
         share: float = CANARY_TRAFFIC_SHARE, sleep: Callable[[float], None] = time.sleep) -> Verdict:
-    watcher = watcher or default_watcher()
     checks: dict[str, bool] = {}
     evidence: dict[str, Any] = {"canary_window_s": window_s, "canary_share": share}
 
@@ -145,6 +144,7 @@ def run(state: RunState, watcher: Any = None, *, window_s: float = CANARY_WINDOW
     if not ok:
         return _verdict("fail", [why], checks, evidence)
 
+    watcher = watcher or _watcher.default()
     path: Optional[Path] = None
     started = False
     try:
@@ -164,6 +164,7 @@ def run(state: RunState, watcher: Any = None, *, window_s: float = CANARY_WINDOW
             checks["canary_started"] = False
             return _verdict("unsure", [f"canary did not start: {exc}"], checks, evidence)
         checks["canary_started"] = True
+        watcher.add_target("canary", CANARY_URL)
 
         set_traffic(canary_url=CANARY_URL, canary_share=share)
         t0 = time.monotonic()
@@ -203,6 +204,7 @@ def run(state: RunState, watcher: Any = None, *, window_s: float = CANARY_WINDOW
         try:
             set_traffic(canary_url="")
         finally:
+            watcher.remove_target("canary")
             if started or "canary" in workspace.instances():
                 workspace.stop_instance("canary")
             if path is not None:

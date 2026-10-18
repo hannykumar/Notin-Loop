@@ -78,6 +78,7 @@ class FixtureFixer(ScriptedFixer):
 class LLMFixer:
     """Asks the LLM for a unified diff from the bug report, the frozen test and the source."""
     name = "llm"
+    uses_llm = True   # run_fix records llm.status() for fixers with uses_llm (wrappers may set it after fix())
     attempts = 2  # one retry on invalid output
 
     def fix(self, workspace: Path, bug: BugReport, failing_test: Path, timeout_s: int) -> str:
@@ -97,11 +98,6 @@ class LLMFixer:
         raise ValueError(f"LLM output is not a unified diff after {self.attempts} attempts")
 
 
-def _cleanup(workspace) -> None:
-    if hasattr(workspace, "cleanup"):
-        workspace.cleanup()
-
-
 def _call_fixer(fixer, tree: Path, state: RunState, timeout_s: int) -> str:
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     try:
@@ -119,16 +115,19 @@ def _diff_applies(workspace, diff: str) -> tuple[bool, str]:
         proc = subprocess.run(["git", "apply", "--check", "-"], cwd=tree, input=diff, text=True, capture_output=True)
         return proc.returncode == 0, proc.stderr.strip()
     finally:
-        _cleanup(workspace)
+        workspace.remove_worktree(tree)
 
 
-def run_fix(state: RunState, fixer, *, workspace, timeout_s: int = policy.FIXER_TIMEOUT_S) -> Verdict:
+def run_fix(state: RunState, fixer, *, workspace=None, timeout_s: int = policy.FIXER_TIMEOUT_S) -> Verdict:
     """Stage 6: run the fixer in a throwaway prod worktree; only its diff string is kept."""
-    evidence: dict = {"fixer": getattr(fixer, "name", type(fixer).__name__)}
+    if workspace is None:
+        from factory import workspace
+    evidence: dict = {}
     checks = {"inputs_present": False, "fixer_returned": False, "diff_nonempty": False, "diff_applies": False}
 
     def verdict(status: str, reason: str) -> Verdict:
-        if isinstance(fixer, LLMFixer):
+        evidence["fixer"] = getattr(fixer, "name", type(fixer).__name__)   # read after fix(): wrappers pick late
+        if getattr(fixer, "uses_llm", False):
             evidence["llm"] = llm.status()
         return Verdict(stage=STAGE, status=status, reasons=[reason], checks=checks, evidence=evidence)
 
@@ -146,13 +145,16 @@ def run_fix(state: RunState, fixer, *, workspace, timeout_s: int = policy.FIXER_
     except Exception as exc:
         return verdict("unsure", f"fixer raised {type(exc).__name__}: {exc}")
     finally:
-        _cleanup(workspace)
+        workspace.remove_worktree(tree)   # never workspace.cleanup(): it would stop the live stable server
     checks["fixer_returned"] = True
 
     if not isinstance(diff, str) or not diff.strip():
         return verdict("unsure", "fixer returned no diff")
     checks["diff_nonempty"] = True
     evidence["diff_sha256"] = sre_base.canonical_hash(diff)
+    state.artifacts_dir.mkdir(parents=True, exist_ok=True)
+    (state.artifacts_dir / "fix.diff").write_text(diff)   # exact text; replay and the report read it
+    evidence["diff_path"] = str(state.artifacts_dir / "fix.diff")
 
     applies, error = _diff_applies(workspace, diff)
     if not applies:
