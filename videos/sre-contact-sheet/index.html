@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SRE Dark Factory: Demo 1 contact sheet</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #191512; }
+
+      /* palette: table #191512 · paper #ece6da · film #15110e · edge print #e39b3a
+         frame UI #0f1316 / #e9e4da / #8f969e · ok #7fd49a · warn #f0a04b · grease pencil #d23a26 */
+      #root {
+        position: relative; width: 100%; height: 100%; overflow: hidden;
+        background: radial-gradient(ellipse at 50% 45%, #2a231d 0%, #191512 60%, #110e0c 100%);
+        font-family: "IBM Plex Mono", monospace; color: #e9e4da;
+      }
+      #grain {
+        position: absolute; inset: -40px; pointer-events: none; opacity: 0.07;
+        background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px),
+                          repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 4px);
+      }
+
+      /* ---------- camera + sheet ---------- */
+      #cam { position: absolute; left: 0; top: 0; width: 7150px; height: 4680px; transform-origin: 0 0; will-change: transform; }
+      #sheet {
+        position: absolute; left: 0; top: 0; width: 7150px; height: 4680px;
+        background: #ece6da; padding: 0 200px; box-shadow: 0 60px 160px rgba(0,0,0,0.6);
+      }
+      #sheet-head {
+        height: 520px; display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 70px;
+        color: #2a221b;
+      }
+      #sheet-head .ttl { font-family: "League Gothic", sans-serif; font-size: 300px; line-height: 0.9; letter-spacing: 4px; }
+      #sheet-head .ttl em { font-style: normal; color: #b8301e; }
+      #sheet-head .meta { font-size: 96px; line-height: 1.25; text-align: right; color: #3b3129; }
+      .strips { display: flex; flex-direction: column; gap: 120px; }
+      .strip {
+        position: relative; height: 1240px; background: #15110e; padding: 170px 70px;
+        display: flex; gap: 70px;
+      }
+      .holes { position: absolute; left: 0; right: 0; height: 60px;
+        background-image: repeating-linear-gradient(90deg, transparent 0 40px, #ece6da 40px 90px, transparent 90px 130px); }
+      .holes.t { top: 26px; } .holes.b { bottom: 26px; }
+      .edge { position: absolute; left: 70px; right: 70px; height: 60px; display: flex; gap: 70px;
+        font-size: 40px; letter-spacing: 6px; color: #e39b3a; }
+      .edge.t { top: 100px; } .edge.b { bottom: 100px; }
+      .edge span { width: 1600px; display: flex; justify-content: space-between; }
+
+      /* ---------- one frame ---------- */
+      .fr {
+        position: relative; flex: none; width: 1600px; height: 900px; background: #0f1316;
+        border-radius: 6px; padding: 64px 80px; overflow: visible;
+      }
+      .fh { display: flex; align-items: baseline; gap: 34px; height: 150px; }
+      .fh .no { font-size: 44px; color: #e39b3a; letter-spacing: 4px; }
+      .fh .st { font-size: 40px; color: #8f969e; letter-spacing: 10px; }
+      .ft { font-family: "Archivo Black", sans-serif; font-size: 70px; line-height: 1.05; color: #f2ede4; margin-top: -60px; max-width: 1440px; }
+      .fb { margin-top: 44px; font-size: 40px; line-height: 1.5; color: #d6d1c7; }
+      .mut { color: #8f969e; } .ok { color: #7fd49a; } .warn { color: #f0a04b; }
+      .hl { position: relative; display: inline-block; }
+      .hl .mk { position: absolute; left: -6px; right: -6px; bottom: -6px; height: 10px; background: #d23a26; border-radius: 5px; transform-origin: 0 50%; }
+      .row { display: flex; gap: 40px; }
+      .tile { flex: 1; background: #171c20; border-radius: 10px; padding: 34px 38px; }
+      .tile .k { font-size: 32px; color: #8f969e; letter-spacing: 3px; }
+      .tile .v { font-family: "Archivo Black", sans-serif; font-size: 64px; margin-top: 12px; color: #f2ede4; }
+      .term { background: #080a0c; border-radius: 10px; padding: 30px 38px; font-size: 36px; line-height: 1.55; }
+      .chip {
+        position: absolute; right: 70px; bottom: 56px; height: 96px; padding: 0 40px; border-radius: 48px;
+        display: flex; align-items: center; gap: 22px; font-size: 40px; letter-spacing: 6px;
+        background: #17241c; color: #7fd49a; border: 3px solid #2f5a3e;
+      }
+      .chip.n { background: #1b1f23; color: #c9c4ba; border-color: #3a4148; }
+      .chip.w { background: #2a1e12; color: #f0a04b; border-color: #6b4823; }
+      .pen { position: absolute; right: 18px; bottom: 6px; width: 560px; height: 200px; overflow: visible; }
+      .pen path { fill: none; stroke: #d23a26; stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+      .grid2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 50px; font-size: 34px; line-height: 1.6; }
+      table { border-collapse: collapse; font-size: 38px; }
+      td { padding: 8px 40px 8px 0; }
+      .diff { background: #080a0c; border-radius: 10px; padding: 26px 34px; font-size: 30px; line-height: 1.6; white-space: pre; }
+      .diff .m { color: #f08a7a; } .diff .p { color: #7fd49a; }
+
+      /* ---------- finale ---------- */
+      #stamp {
+        position: absolute; left: 0; right: 0; top: 360px; display: flex; justify-content: center; pointer-events: none;
+      }
+      #stamp div {
+        font-family: "League Gothic", sans-serif; font-size: 120px; line-height: 1; letter-spacing: 6px; color: #b8301e;
+        background: rgba(236,230,218,0.94); border: 12px solid #b8301e; border-radius: 16px; padding: 18px 60px 10px;
+      }
+      #outro {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 196px; background: #110e0c; text-align: center;
+        display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px;
+      }
+      #outro .a { font-size: 34px; max-width: 1700px; color: #ece6da; }
+      #outro .a b { color: #f08a7a; font-weight: 400; }
+      #outro .b { font-size: 26px; letter-spacing: 6px; color: #e39b3a; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-qbnw" id="root" data-composition-id="main" data-start="0" data-duration="60" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-upio" id="world" class="clip" data-start="0" data-duration="60" data-track-index="0" style="position:absolute;inset:0">
+        <div data-hf-id="hf-frxh" id="cam" data-layout-allow-overflow>
+          <div data-hf-id="hf-0n66" id="sheet">
+            <div data-hf-id="hf-lzrt" id="sheet-head">
+              <div data-hf-id="hf-397o" class="ttl">SRE DARK FACTORY <em data-hf-id="hf-cy5k">/</em> ROLL 01</div>
+              <div data-hf-id="hf-mnov" class="meta">Demo 1 · BUG-CART · run-a<br data-hf-id="hf-x5px" />one alert · zero humans · 2026-10-18</div>
+            </div>
+            <div data-hf-id="hf-uqz1" class="strips">
+              <!-- ================= STRIP 1 ================= -->
+              <div data-hf-id="hf-0u8q" class="strip">
+                <div data-hf-id="hf-e7fh" class="holes t"></div><div data-hf-id="hf-m023" class="holes b"></div>
+                <div data-hf-id="hf-ym5n" class="edge t"><span data-hf-id="hf-uckh"><b data-hf-id="hf-8en0">▸ 1</b><b data-hf-id="hf-k42m">ROLL-01</b></span><span data-hf-id="hf-l73p"><b data-hf-id="hf-77px">▸ 2</b><b data-hf-id="hf-cf42">ROLL-01</b></span><span data-hf-id="hf-me0s"><b data-hf-id="hf-7m0y">▸ 3</b><b data-hf-id="hf-ctf3">ROLL-01</b></span><span data-hf-id="hf-lzpr"><b data-hf-id="hf-9lk3">▸ 4</b><b data-hf-id="hf-d7q4">ROLL-01</b></span></div>
+                <div data-hf-id="hf-t14t" class="edge b"><span data-hf-id="hf-n6mu"><b data-hf-id="hf-b1vr">1A</b><b data-hf-id="hf-19x8">SRE-DF 400</b></span><span data-hf-id="hf-msbt"><b data-hf-id="hf-qva4">2A</b><b data-hf-id="hf-ta0k">SRE-DF 400</b></span><span data-hf-id="hf-nz8w"><b data-hf-id="hf-20t5">3A</b><b data-hf-id="hf-s33h">SRE-DF 400</b></span><span data-hf-id="hf-nkxv"><b data-hf-id="hf-box2">4A</b><b data-hf-id="hf-shei">SRE-DF 400</b></span></div>
+
+                <div data-hf-id="hf-cjro" class="fr" id="f0">
+                  <div data-hf-id="hf-99ju" class="fh"><span data-hf-id="hf-uqzb" class="no">01</span><span data-hf-id="hf-6uu2" class="st">LIVE</span></div>
+                  <div data-hf-id="hf-ech2" class="ft">Production is healthy</div>
+                  <div data-hf-id="hf-vzdk" class="fb">
+                    <div data-hf-id="hf-thy4" class="row">
+                      <div data-hf-id="hf-f6ek" class="tile"><div data-hf-id="hf-a2my" class="k">STABLE :8101</div><div data-hf-id="hf-03gy" class="v">release-0</div></div>
+                      <div data-hf-id="hf-8r7o" class="tile"><div data-hf-id="hf-j823" class="k">ERROR RATE</div><div data-hf-id="hf-pgv4" class="v ok"><span data-hf-id="hf-rgpk" class="hl">0.0%<span data-hf-id="hf-ic85" class="mk"></span></span></div></div>
+                      <div data-hf-id="hf-7kal" class="tile"><div data-hf-id="hf-x2fd" class="k">P95 LATENCY</div><div data-hf-id="hf-9wr3" class="v">2.05 ms</div></div>
+                    </div>
+                    <div data-hf-id="hf-pkn3" class="mut" style="margin-top:34px">traffic generator → stable · 136 samples / 10 s</div>
+                  </div>
+                  <div data-hf-id="hf-0ppr" class="chip n">BASELINE</div>
+                  <svg data-hf-id="hf-1wuq" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-qpwm" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-dbfh" class="fr" id="f1">
+                  <div data-hf-id="hf-8m9q" class="fh"><span data-hf-id="hf-ucoa" class="no">02</span><span data-hf-id="hf-1ubb" class="st">BREAK</span></div>
+                  <div data-hf-id="hf-9kq6" class="ft">Something breaks</div>
+                  <div data-hf-id="hf-qss0" class="fb">
+                    <div data-hf-id="hf-d8se" class="term">
+                      <div data-hf-id="hf-qir1"><span data-hf-id="hf-ungr" class="mut">$</span> python -m factory.cli break cart</div>
+                      <div data-hf-id="hf-pnt7">GET /cart/total?user=new-user → <span data-hf-id="hf-9sf4" class="warn">500</span></div>
+                      <div data-hf-id="hf-esk1">GET /cart/total?user=guest-41 → <span data-hf-id="hf-yv4o" class="warn">500</span></div>
+                      <div data-hf-id="hf-g9io" class="warn"><span data-hf-id="hf-si5g" class="hl">KeyError: 'items'<span data-hf-id="hf-4trt" class="mk"></span></span> app/cart.py:cart_total</div>
+                    </div>
+                    <div data-hf-id="hf-7yvf" class="mut" style="margin-top:28px">empty carts crash the total endpoint</div>
+                  </div>
+                  <div data-hf-id="hf-beo3" class="chip w">INCIDENT</div>
+                  <svg data-hf-id="hf-iok6" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-ymui" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-jh5a" class="fr" id="f2">
+                  <div data-hf-id="hf-90kr" class="fh"><span data-hf-id="hf-tyd9" class="no">03</span><span data-hf-id="hf-qjau" class="st">ALERT</span></div>
+                  <div data-hf-id="hf-gkxq" class="ft">The alert fires. The agent wakes up.</div>
+                  <div data-hf-id="hf-plux" class="fb">
+                    <div data-hf-id="hf-nwrm" class="term">
+                      <div data-hf-id="hf-blgg"><span data-hf-id="hf-alnb" class="mut">alert_id</span>  ALERT-run-a</div>
+                      <div data-hf-id="hf-yeow"><span data-hf-id="hf-m87i" class="mut">path    </span>  <span data-hf-id="hf-8m99" class="hl">/cart/total<span data-hf-id="hf-60ow" class="mk"></span></span></div>
+                      <div data-hf-id="hf-ekd1"><span data-hf-id="hf-jbk4" class="mut">checks  </span>  well_formed <span data-hf-id="hf-nd5k" class="ok">✓</span>   not_duplicate <span data-hf-id="hf-2bhs" class="ok">✓</span></div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-f508" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-j2v7" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-z15j" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-nf9b" class="fr" id="f3">
+                  <div data-hf-id="hf-9evs" class="fh"><span data-hf-id="hf-wqig" class="no">04</span><span data-hf-id="hf-79kg" class="st">TRIAGE</span></div>
+                  <div data-hf-id="hf-mgk4" class="ft">Triage first: did we ship this?</div>
+                  <div data-hf-id="hf-q05y" class="fb">
+                    <div data-hf-id="hf-bt6k"><span data-hf-id="hf-tb10" class="mut">Q</span>  Is the failing code one of the agent's own releases, still in its watch window?</div>
+                    <div data-hf-id="hf-xuxc" style="margin-top:20px"><span data-hf-id="hf-znxg" class="mut">A</span>  No. Prod is <span data-hf-id="hf-g2zz" class="hl">release-0<span data-hf-id="hf-5mdv" class="mk"></span></span>, the human baseline.</div>
+                    <div data-hf-id="hf-klwt" style="margin-top:20px" class="ok">→ investigate. Never roll back what we didn't ship.</div>
+                  </div>
+                  <div data-hf-id="hf-w7e8" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-jh68" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-zfgk" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+              </div>
+
+              <!-- ================= STRIP 2 ================= -->
+              <div data-hf-id="hf-gpxa" class="strip">
+                <div data-hf-id="hf-vpkh" class="holes t"></div><div data-hf-id="hf-x6i3" class="holes b"></div>
+                <div data-hf-id="hf-ex6z" class="edge t"><span data-hf-id="hf-ieyi"><b data-hf-id="hf-9zv4">▸ 5</b><b data-hf-id="hf-dm15">ROLL-01</b></span><span data-hf-id="hf-i0nh"><b data-hf-id="hf-8sy1">▸ 6</b><b data-hf-id="hf-e0c6">ROLL-01</b></span><span data-hf-id="hf-1qzj"><b data-hf-id="hf-9792">▸ 7</b><b data-hf-id="hf-een7">ROLL-01</b></span><span data-hf-id="hf-25ak"><b data-hf-id="hf-4tvr">▸ 8</b><b data-hf-id="hf-esy8">ROLL-01</b></span></div>
+                <div data-hf-id="hf-2pzl" class="edge b"><span data-hf-id="hf-0ydh"><b data-hf-id="hf-5rmr">5A</b><b data-hf-id="hf-ugxn">SRE-DF 400</b></span><span data-hf-id="hf-1coi"><b data-hf-id="hf-nsmw">6A</b><b data-hf-id="hf-uv8o">SRE-DF 400</b></span><span data-hf-id="hf-3c7n"><b data-hf-id="hf-yy5x">7A</b><b data-hf-id="hf-tobl">SRE-DF 400</b></span><span data-hf-id="hf-3qio"><b data-hf-id="hf-n4gi">8A</b><b data-hf-id="hf-u2mm">SRE-DF 400</b></span></div>
+
+                <div data-hf-id="hf-rddc" class="fr" id="f4">
+                  <div data-hf-id="hf-6mql" class="fh"><span data-hf-id="hf-wc7f" class="no">05</span><span data-hf-id="hf-uflf" class="st">INVESTIGATE</span></div>
+                  <div data-hf-id="hf-xpjj" class="ft">Gather evidence before touching code</div>
+                  <div data-hf-id="hf-ot8v" class="fb">
+                    <div data-hf-id="hf-18ws" class="row" style="gap:60px">
+                      <div data-hf-id="hf-5bxp">server log <span data-hf-id="hf-14kp" class="ok">✓</span></div><div data-hf-id="hf-cbz7">metrics scrape <span data-hf-id="hf-1ivq" class="ok">✓</span></div>
+                      <div data-hf-id="hf-k14h">live replay <span data-hf-id="hf-0byn" class="ok">✓</span></div><div data-hf-id="hf-czta">release ledger <span data-hf-id="hf-0q9o" class="ok">✓</span></div>
+                    </div>
+                    <div data-hf-id="hf-qctc" style="margin-top:34px"><span data-hf-id="hf-foh1" class="mut">signature</span>  <span data-hf-id="hf-gor6" class="hl">KeyError@app/cart.py:cart_total<span data-hf-id="hf-3muq" class="mk"></span></span></div>
+                    <div data-hf-id="hf-ensb" style="margin-top:14px"><span data-hf-id="hf-zt1f" class="mut">evidence gate</span>  enough to act</div>
+                  </div>
+                  <div data-hf-id="hf-v0h5" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-gp11" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-ztrl" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-s515" class="fr" id="f5">
+                  <div data-hf-id="hf-711m" class="fh"><span data-hf-id="hf-vxwe" class="no">06</span><span data-hf-id="hf-ktmb" class="st">REPRODUCE</span></div>
+                  <div data-hf-id="hf-pzro" class="ft">Prove the bug with a failing test</div>
+                  <div data-hf-id="hf-p7jw" class="fb">
+                    <div data-hf-id="hf-ob2n" class="term">
+                      <div data-hf-id="hf-gzje"><span data-hf-id="hf-7ycr" class="mut">$</span> pytest test_repro_cart.py   <span data-hf-id="hf-5ovf" class="mut"># on release-0</span></div>
+                      <div data-hf-id="hf-1270"><span data-hf-id="hf-ridl" class="warn">F</span>  <span data-hf-id="hf-3evh" class="hl">1 failed<span data-hf-id="hf-38jp" class="mk"></span></span>, 0 passed</div>
+                    </div>
+                    <div data-hf-id="hf-8rs3" class="mut" style="margin-top:28px">no red test = no proof = unsure → inbox</div>
+                  </div>
+                  <div data-hf-id="hf-ves6" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-h3c2" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-082m" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-w356" class="fr" id="f6">
+                  <div data-hf-id="hf-7fcn" class="fh"><span data-hf-id="hf-vjld" class="no">07</span><span data-hf-id="hf-ovur" class="st">FIX</span></div>
+                  <div data-hf-id="hf-iqzz" class="ft">The fixer hands over a diff. Nothing else.</div>
+                  <div data-hf-id="hf-qp0n" class="fb" style="margin-top:34px">
+                    <div data-hf-id="hf-bnol" class="diff"><span data-hf-id="hf-7yyg" class="mut">--- a/app/cart.py   +++ b/app/cart.py</span>
+<span data-hf-id="hf-4yut" class="m">-  total = sum(... for item in cart["items"])</span>
+<span data-hf-id="hf-2fmm" class="p">+  total = sum(... for item in <span data-hf-id="hf-69wg" class="hl">cart.get("items", [])<span data-hf-id="hf-4fgs" class="mk"></span></span>)</span></div>
+                    <div data-hf-id="hf-5d1w" class="mut" style="margin-top:22px;font-size:34px">1 file · 2 lines · sha256 3c367cc2…</div>
+                  </div>
+                  <div data-hf-id="hf-u7v3" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-hhn3" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-0mdn" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-0197" class="fr" id="f7">
+                  <div data-hf-id="hf-7tno" class="fh"><span data-hf-id="hf-ybqk" class="no">08</span><span data-hf-id="hf-lcvn" class="st">INSPECT DIFF</span></div>
+                  <div data-hf-id="hf-rr3k" class="ft">Inspect it before any of it runs</div>
+                  <div data-hf-id="hf-ts4j" class="fb" style="margin-top:30px">
+                    <div data-hf-id="hf-6ldu" class="grid2">
+                      <div data-hf-id="hf-g32r"><span data-hf-id="hf-zjcl" class="ok">✓</span> valid_unified_diff</div><div data-hf-id="hf-y7yw"><span data-hf-id="hf-zxnm" class="ok">✓</span> <span data-hf-id="hf-fsqo" class="hl">no_secrets<span data-hf-id="hf-415r" class="mk"></span></span></div>
+                      <div data-hf-id="hf-fme1"><span data-hf-id="hf-yqqj" class="ok">✓</span> ast_parses</div><div data-hf-id="hf-7hhx"><span data-hf-id="hf-z51k" class="ok">✓</span> no_protected_paths</div>
+                      <div data-hf-id="hf-wwdd"><span data-hf-id="hf-wqdc" class="ok">✓</span> no_banned_imports</div><div data-hf-id="hf-0399"><span data-hf-id="hf-wc2b" class="ok">✓</span> no_dependency_files</div>
+                      <div data-hf-id="hf-ix61"><span data-hf-id="hf-vxra" class="ok">✓</span> hunks_near_traceback</div><div data-hf-id="hf-megw"><span data-hf-id="hf-vjg9" class="ok">✓</span> no_frozen_test_literals</div>
+                      <div data-hf-id="hf-ko45"><span data-hf-id="hf-v558" class="ok">✓</span> file / line limits</div><div data-hf-id="hf-72kl"><span data-hf-id="hf-uqu7" class="ok">✓</span> no_binary</div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-w0pq" class="chip">✓ 11/11</div>
+                  <svg data-hf-id="hf-hvy4" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-10oo" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+              </div>
+
+              <!-- ================= STRIP 3 ================= -->
+              <div data-hf-id="hf-h48b" class="strip">
+                <div data-hf-id="hf-wwhk" class="holes t"></div><div data-hf-id="hf-ws72" class="holes b"></div>
+                <div data-hf-id="hf-eivy" class="edge t"><span data-hf-id="hf-2jll"><b data-hf-id="hf-586s">▸ 9</b><b data-hf-id="hf-8uct">ROLL-01</b></span><span data-hf-id="hf-2xwm"><b data-hf-id="hf-h7ic">▸ 10</b><b data-hf-id="hf-98nu">ROLL-01</b></span><span data-hf-id="hf-ykjb"><b data-hf-id="hf-gt7b">▸ 11</b><b data-hf-id="hf-did2">ROLL-01</b></span><span data-hf-id="hf-yyuc"><b data-hf-id="hf-gewa">▸ 12</b><b data-hf-id="hf-d421">ROLL-01</b></span></div>
+                <div data-hf-id="hf-3wwo" class="edge b"><span data-hf-id="hf-1les"><b data-hf-id="hf-y9zj">9A</b><b data-hf-id="hf-w25r">SRE-DF 400</b></span><span data-hf-id="hf-173r"><b data-hf-id="hf-8itb">10A</b><b data-hf-id="hf-wggs">SRE-DF 400</b></span><span data-hf-id="hf-0ssq"><b data-hf-id="hf-xdaa">11A</b><b data-hf-id="hf-h2fg">SRE-DF 400</b></span><span data-hf-id="hf-0ehp"><b data-hf-id="hf-5rbl">12A</b><b data-hf-id="hf-go4f">SRE-DF 400</b></span></div>
+
+                <div data-hf-id="hf-3zd8" class="fr" id="f8">
+                  <div data-hf-id="hf-beex" class="fh"><span data-hf-id="hf-xxfj" class="no">09</span><span data-hf-id="hf-i1g2" class="st">ORACLE</span></div>
+                  <div data-hf-id="hf-ebty" class="ft">Tests decide, not the LLM</div>
+                  <div data-hf-id="hf-o0mt" class="fb">
+                    <table data-hf-id="hf-2j5r">
+                      <tr data-hf-id="hf-p3r7"><td data-hf-id="hf-xpcg" class="mut">repro on release-0</td><td data-hf-id="hf-1tth" class="warn">0 / 1</td></tr>
+                      <tr data-hf-id="hf-ddj7"><td data-hf-id="hf-0fqu" class="mut">repro, patched</td><td data-hf-id="hf-wbxb" class="ok"><span data-hf-id="hf-s4ai" class="hl">1 / 1<span data-hf-id="hf-21mm" class="mk"></span></span></td></tr>
+                      <tr data-hf-id="hf-cz86"><td data-hf-id="hf-6kmv" class="mut">full suite, patched</td><td data-hf-id="hf-jbag" class="ok">16 / 16</td></tr>
+                      <tr data-hf-id="hf-ckx5"><td data-hf-id="hf-7k3h" class="mut">regressions</td><td data-hf-id="hf-kbst" class="ok">0</td></tr>
+                    </table>
+                  </div>
+                  <div data-hf-id="hf-um64" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-f3sx" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-1ezp" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-6ymt" class="fr" id="f9">
+                  <div data-hf-id="hf-bspy" class="fh"><span data-hf-id="hf-vwy5" class="no">10</span><span data-hf-id="hf-mbds" class="st">CANARY</span></div>
+                  <div data-hf-id="hf-elff" class="ft">Canary: 20% of live traffic, 12 s</div>
+                  <div data-hf-id="hf-oexu" class="fb">
+                    <table data-hf-id="hf-ks5b">
+                      <tr data-hf-id="hf-c6m4"><td data-hf-id="hf-54xx"></td><td data-hf-id="hf-ojqa" class="mut">stable</td><td data-hf-id="hf-ptsi" class="mut">canary :8102</td></tr>
+                      <tr data-hf-id="hf-bsb3"><td data-hf-id="hf-7s71" class="mut">error rate</td><td data-hf-id="hf-pwqc">0.0%</td><td data-hf-id="hf-gs0v" class="ok"><span data-hf-id="hf-beeo" class="hl">0.0%<span data-hf-id="hf-1nbl" class="mk"></span></span></td></tr>
+                      <tr data-hf-id="hf-be02"><td data-hf-id="hf-2asp" class="mut">p95</td><td data-hf-id="hf-jxly">2.05 ms</td><td data-hf-id="hf-qzmz" class="ok">1.94 ms</td></tr>
+                      <tr data-hf-id="hf-azp1"><td data-hf-id="hf-b51c" class="mut">samples</td><td data-hf-id="hf-qb69">136</td><td data-hf-id="hf-ser3">37</td></tr>
+                    </table>
+                  </div>
+                  <div data-hf-id="hf-tf91" class="chip">✓ PASS</div>
+                  <svg data-hf-id="hf-fi3y" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-1taq" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-xpb3" class="fr" id="f10">
+                  <div data-hf-id="hf-g0wa" class="fh"><span data-hf-id="hf-wb96" class="no">11</span><span data-hf-id="hf-s6ku" class="st">PROMOTE + WATCH</span></div>
+                  <div data-hf-id="hf-obco" class="ft">Ship it, then keep watching</div>
+                  <div data-hf-id="hf-n80r" class="fb">
+                    <div data-hf-id="hf-gxfq"><span data-hf-id="hf-kyjv" class="mut">tag</span>  <span data-hf-id="hf-ghb0" class="hl">release-1<span data-hf-id="hf-zd0r" class="mk"></span></span> @ 54d33da  <span data-hf-id="hf-xs7x" class="mut">· stable :8101 restarted</span></div>
+                    <div data-hf-id="hf-hizh" style="margin-top:24px" class="mut">45 s watch window</div>
+                    <div data-hf-id="hf-mk2p"><span data-hf-id="hf-ucj6" class="ok">✓</span> KeyError@cart_total gone</div>
+                    <div data-hf-id="hf-mexq"><span data-hf-id="hf-ty85" class="ok">✓</span> SLO holds   <span data-hf-id="hf-tjx4" class="ok">✓</span> no new signatures</div>
+                  </div>
+                  <div data-hf-id="hf-fvo9" class="chip">✓ KEPT</div>
+                  <svg data-hf-id="hf-sphu" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-qnse" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+
+                <div data-hf-id="hf-tr72" class="fr" id="f11">
+                  <div data-hf-id="hf-fml9" class="fh"><span data-hf-id="hf-wpk7" class="no">12</span><span data-hf-id="hf-zcyf" class="st">AUDIT</span></div>
+                  <div data-hf-id="hf-kdnz" class="ft">Every verdict is on the record</div>
+                  <div data-hf-id="hf-z7ab" class="fb" style="margin-top:30px">
+                    <div data-hf-id="hf-k7c6" class="grid2">
+                      <div data-hf-id="hf-35b1">1 alert <span data-hf-id="hf-wwla" class="ok">pass</span></div><div data-hf-id="hf-jvld">5 canary <span data-hf-id="hf-z36q" class="ok">pass</span></div>
+                      <div data-hf-id="hf-t5d1">2 fix <span data-hf-id="hf-zhhr" class="ok">pass</span></div><div data-hf-id="hf-a4q2">6 promote <span data-hf-id="hf-zvss" class="ok">pass</span></div>
+                      <div data-hf-id="hf-ezfh">3 inspect_diff <span data-hf-id="hf-0a3t" class="ok">pass</span></div><div data-hf-id="hf-6jl2">7 watch <span data-hf-id="hf-0oeu" class="ok">pass</span></div>
+                      <div data-hf-id="hf-dm52">4 oracle <span data-hf-id="hf-12pv" class="ok">pass</span></div><div data-hf-id="hf-xmeh" class="mut">hash-chained + HMAC</div>
+                    </div>
+                    <div data-hf-id="hf-z400" style="margin-top:24px;font-size:34px"><span data-hf-id="hf-7k1q" class="mut">$</span> <span data-hf-id="hf-mtj3" class="hl">factory.cli replay run-a<span data-hf-id="hf-zrbs" class="mk"></span></span></div>
+                  </div>
+                  <div data-hf-id="hf-y3b8" class="chip">✓ 7/7</div>
+                  <svg data-hf-id="hf-sb6t" class="pen" viewBox="0 0 560 200"><path data-hf-id="hf-q9hd" d="M 300 40 C 140 30 30 60 40 115 C 50 175 470 185 530 120 C 575 70 470 25 330 30 C 260 33 200 45 170 60" /></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-f6d6" id="grain"></div>
+
+
+      <div data-hf-id="hf-frsz" id="stamp" class="clip" data-start="53.6" data-duration="6.4" data-track-index="2">
+        <div data-hf-id="hf-1glo" id="stamp-in" data-layout-allow-overlap>SHIPPED · NO HUMAN IN THE LOOP</div>
+      </div>
+
+      <div data-hf-id="hf-ezl4" id="outro" class="clip" data-start="55.4" data-duration="4.6" data-track-index="3">
+        <div data-hf-id="hf-g3th" class="a">Only an unbroken chain of <b data-hf-id="hf-x8e0">PASS</b> changes the server. Anything else rolls back or escalates.</div>
+        <div data-hf-id="hf-gt69" class="b">GITHUB.COM/HANNYKUMAR/NOTIN-LOOP</div>
+      </div>
+    </div>
+
+    <script>
+      const N = 12;
+      const tl = gsap.timeline({ paused: true });
+      const cam = document.getElementById("cam");
+
+      // Frame centres in sheet space (offsets ignore transforms)
+      const sheet = document.getElementById("sheet");
+      function centre(el) {
+        let x = 0, y = 0, n = el;
+        while (n && n !== sheet) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+        return { x: x + el.offsetWidth / 2, y: y + el.offsetHeight / 2 };
+      }
+      const frames = [...Array(N)].map((_, i) => document.getElementById("f" + i));
+      const C = frames.map(centre);
+      const SW = 7150, SH = 4680;
+      const sOv = Math.min((1920 * 0.95) / SW, (1080 * 0.95) / SH);
+      const OV = { x: SW / 2, y: SH / 2, s: sOv };
+      const END = { x: SW / 2, y: 510 / 0.18, s: 0.18 }; // sheet top at y=30, bottom ~872
+      const PUSH = { x: SW / 2, y: SH * 0.4, s: sOv * 1.2 };
+
+      // Timing: frame i lands at A[i], dwells 3.05 s, then a 0.95 s move to the next
+      const A = [...Array(N)].map((_, i) => 5.1 + 4 * i);
+      const DWELL = 3.05, OUT_START = A[N - 1] + 3.5, OUT_END = OUT_START + 1.4;
+
+      const lerp = (a, b, e) => a + (b - a) * e;
+      const ease3 = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+      const sine = (p) => -(Math.cos(Math.PI * p) - 1) / 2;
+      function mix(P, Q, p, dip, e) {
+        const k = e(p);
+        return { x: lerp(P.x, Q.x, k), y: lerp(P.y, Q.y, k), s: lerp(P.s, Q.s, k) * (1 - dip * Math.sin(Math.PI * p)) };
+      }
+      const F = (i, s) => ({ x: C[i].x, y: C[i].y, s });
+
+      // Camera pose is a pure function of time, so any seek lands on the same frame
+      function camAt(t) {
+        if (t < 4.1) return mix(OV, PUSH, Math.max(0, (t - 0.6) / 3.5), 0, sine);
+        if (t < A[0]) return mix(PUSH, F(0, 1), (t - 4.1) / (A[0] - 4.1), 0, ease3);
+        for (let i = 0; i < N; i++) {
+          const end = A[i] + DWELL;
+          if (i === N - 1) {
+            if (t < OUT_START) return F(i, 1 + 0.03 * Math.min(1, (t - A[i]) / DWELL));
+            if (t < OUT_END) return mix(F(i, 1.03), END, (t - OUT_START) / (OUT_END - OUT_START), 0, ease3);
+            return END;
+          }
+          if (t < end) return F(i, 1 + 0.03 * ((t - A[i]) / DWELL));
+          if (t < A[i + 1]) {
+            const rowChange = (i + 1) % 4 === 0;
+            return mix(F(i, 1.03), F(i + 1, 1), (t - end) / (A[i + 1] - end), rowChange ? 0.5 : 0.28, ease3);
+          }
+        }
+        return OV;
+      }
+      function apply(t) {
+        const p = camAt(t);
+        cam.style.transform = `translate(${960 - p.s * p.x}px, ${540 - p.s * p.y}px) scale(${p.s})`;
+      }
+      const clock = { t: 0 };
+      apply(0);
+      tl.to(clock, { t: 60, duration: 60, ease: "none", onUpdate: () => apply(clock.t) }, 0);
+
+      // Intro: sheet slides onto the table
+      tl.fromTo("#sheet", { y: 900, rotation: -2.5, opacity: 0 }, { y: 0, rotation: 0, opacity: 1, duration: 1.1, ease: "power3.out" }, 0);
+
+      // Per-frame review marks: highlight underline, grease-pencil loop, chip pop
+      frames.forEach((fr, i) => {
+        const a = A[i];
+        const mk = fr.querySelector(".mk");
+        const path = fr.querySelector(".pen path");
+        const len = path.getTotalLength() * 1.05;
+        path.style.strokeDasharray = `${len}`;
+        path.style.strokeDashoffset = `${len}`;
+        if (mk) tl.fromTo(mk, { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power2.out" }, a + 0.45);
+        tl.fromTo(fr.querySelector(".chip"), { scale: 0.86 }, { scale: 1, duration: 0.4, ease: "back.out(2.4)" }, a + 1.05);
+        tl.to(path, { strokeDashoffset: 0, duration: 0.75, ease: "power1.inOut" }, a + 1.15);
+      });
+
+      // Finale
+      tl.fromTo("#stamp-in", { scale: 1.5, rotation: -10, opacity: 0 }, { scale: 1, rotation: -4, opacity: 1, duration: 0.45, ease: "power4.in" }, 53.7);
+      tl.fromTo("#outro", { y: 200 }, { y: 0, duration: 0.6, ease: "power3.out" }, 55.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

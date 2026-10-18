@@ -1,0 +1,7 @@
+renders/
+.hyperframes/
+node_modules/
+AGENTS.md
+CLAUDE.md
+.thumbnails/
+.DS_Store
