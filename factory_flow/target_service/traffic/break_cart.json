@@ -1,0 +1,7 @@
+{
+  "name": "break_cart",
+  "base": "normal",
+  "requests": [
+    {"method": "GET", "path": "/cart/total", "query": {"user": "dave"}, "weight": 3}
+  ]
+}

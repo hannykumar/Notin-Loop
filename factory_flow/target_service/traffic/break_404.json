@@ -1,0 +1,7 @@
+{
+  "name": "break_404",
+  "base": "normal",
+  "requests": [
+    {"method": "GET", "path": "/orders/o-9999", "weight": 3}
+  ]
+}
