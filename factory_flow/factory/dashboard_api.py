@@ -7,7 +7,12 @@
 Reads the agent's files (audit.jsonl, inbox/, releases.json, deploy/stable.json). Human actions, all through
 the same calls as the CLI (actor "human"): POST /api/rollback/{tag}, /api/pause, /api/resume, /api/break/{name}
 (traffic profile), /api/replay/{run_id}, /api/report (+ GET /report). The buddy only explains: it never decides
-a verdict and sees only the run's recorded evidence and diff. Patterned on SRE-agent/agent/run_summaries.py (turn run state into a plain summary)
+a verdict and sees only the run's recorded evidence and diff.
+
+Snapshot mode (DASHBOARD_SNAPSHOT=<dir>, a recorded copy of runs/ made by scripts/export_snapshot.py; used by the
+read-only Vercel deploy): every read comes from that dir, health is the recorded <dir>/health.json (no scraping),
+the status stream sends one event per connection, replay returns <dir>/replays.json, and every mutating
+endpoint answers 403. Nothing is written. Patterned on SRE-agent/agent/run_summaries.py (turn run state into a plain summary)
 via factory/report.py; the live view follows report.render_live's per-stage marks.
 """
 from __future__ import annotations
@@ -15,13 +20,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -50,8 +56,33 @@ BUDDY_SUMMARY_QUESTION = (
     "and why it ended with its final status."
 )
 
+READ_ONLY_DETAIL = "read-only recorded demo: the live demo runs on the team's laptop"
+SNAPSHOT_RETRY_MS = 30000   # EventSource reconnect delay in snapshot mode: the recorded state never changes
+
 router = APIRouter(prefix="/api")
 _watcher = Watcher()
+
+
+def snapshot_dir() -> Optional[Path]:
+    """The recorded runs/ copy when DASHBOARD_SNAPSHOT is set (read-only demo), else None (live)."""
+    value = os.environ.get("DASHBOARD_SNAPSHOT")
+    return Path(value).resolve() if value else None
+
+
+if snapshot_dir():   # before anything resolves runs_dir(): every factory reader then reads the snapshot
+    os.environ["FACTORY_RUNS_DIR"] = str(snapshot_dir())
+
+
+def _recorded(name: str) -> dict:
+    try:
+        return json.loads((snapshot_dir() / name).read_text())
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _live_only() -> None:
+    if snapshot_dir():
+        raise HTTPException(status_code=403, detail=READ_ONLY_DETAIL)
 
 
 def set_watcher(watcher: Any) -> None:
@@ -108,7 +139,7 @@ def _diff(entries: list[dict], run_id: str) -> str:
     if path.is_file():
         return path.read_text()
     commit = _evidence(entries, "promote").get("commit")
-    if commit:
+    if commit and not snapshot_dir():   # no target_service git repo in a recorded demo
         try:
             return releases.git("show", "--format=", commit)
         except Exception:  # target_service reset since the run: no diff to show
@@ -169,6 +200,8 @@ def incidents() -> list[dict]:
 
 def server_health() -> dict:
     """Stable is healthy if its last scrape worked and no route is at or above the alert error rate."""
+    if snapshot_dir():   # recorded health; never scrape or tick
+        return _recorded("health.json") or {"healthy": None, "reason": "no recorded health"}
     # current() ticks only when the watcher is stale (Watcher._fresh). The agent's shared watcher is already
     # ticking; forcing a tick here would double-count its breach streaks and drop the breaches it returns.
     overall = (_watcher.current("*", "stable").get("metrics") or {})
@@ -189,6 +222,8 @@ def server_health() -> dict:
 
 
 def _traffic_profile() -> Optional[str]:
+    if snapshot_dir():
+        return _recorded("traffic_control.json").get("profile")
     from factory.stages.canary import _traffic
     return _traffic().read_control().get("profile")
 
@@ -224,6 +259,7 @@ def status_snapshot() -> dict:
         "traffic_profile": _try(_traffic_profile),
         "chain_verified": _try(_chain_verified),
         "scoreboard": _try(_scoreboard),
+        **({"snapshot": {k: _recorded("meta.json").get(k) for k in ("recorded_at", "note")}} if snapshot_dir() else {}),
     }
 
 
@@ -271,11 +307,15 @@ class BuddyRequest(BaseModel):
 
 @router.get("/status")
 async def status_stream(once: bool = False) -> StreamingResponse:
+    recorded = snapshot_dir() is not None   # serverless: one event, then close (EventSource reconnects)
+
     async def events():
+        if recorded:
+            yield f"retry: {SNAPSHOT_RETRY_MS}\n"
         while True:
             snapshot = await run_in_threadpool(status_snapshot)
             yield f"data: {json.dumps(snapshot, default=str)}\n\n"
-            if once:
+            if once or recorded:
                 return
             await asyncio.sleep(STATUS_INTERVAL_S)
 
@@ -304,7 +344,7 @@ async def buddy(request: BuddyRequest) -> StreamingResponse:
     return StreamingResponse(_chunks(answer), media_type="text/plain; charset=utf-8")
 
 
-@router.post("/rollback/{tag}")
+@router.post("/rollback/{tag}", dependencies=[Depends(_live_only)])
 async def manual_rollback(tag: str) -> dict:
     from factory.stages import rollback  # imported lazily: it pulls git and process control
 
@@ -313,7 +353,7 @@ async def manual_rollback(tag: str) -> dict:
     return json.loads(json.dumps(asdict(verdict), default=str))
 
 
-@router.post("/break/{name}")
+@router.post("/break/{name}", dependencies=[Depends(_live_only)])
 def break_traffic(name: str) -> dict:
     from factory import cli
 
@@ -322,13 +362,13 @@ def break_traffic(name: str) -> dict:
     return {"ok": True, "control": cli.set_profile(name)}
 
 
-@router.post("/pause")
+@router.post("/pause", dependencies=[Depends(_live_only)])
 def pause_line() -> dict:
     pipeline.pause(actor="human", reason="dashboard pause")
     return {"ok": True, "paused": True}
 
 
-@router.post("/resume")
+@router.post("/resume", dependencies=[Depends(_live_only)])
 def resume_line() -> dict:
     pipeline.resume(actor="human")
     return {"ok": True, "paused": False}
@@ -336,13 +376,18 @@ def resume_line() -> dict:
 
 @router.post("/replay/{run_id}")
 def replay_run(run_id: str) -> dict:
+    if snapshot_dir():
+        recorded = _recorded("replays.json").get(run_id)
+        if not recorded:
+            raise HTTPException(status_code=404, detail=f"no recorded replay for {run_id}")
+        return {"ok": True, "reproduced": recorded["reproduced"], "lines": recorded["lines"]}
     from factory import replay
 
     result = replay.replay(run_id)
     return {"ok": True, "reproduced": result["reproduced"], "lines": replay.format_result(result)}
 
 
-@router.post("/report")
+@router.post("/report", dependencies=[Depends(_live_only)])
 def write_report() -> dict:
     return {"ok": True, "path": str(report.render_html()), "url": "/report"}
 
@@ -359,6 +404,8 @@ def index() -> FileResponse:
 @app.get("/report", include_in_schema=False)
 def get_report() -> FileResponse:
     path = audit.runs_dir() / "report.html"
+    if not path.exists() and snapshot_dir():
+        raise HTTPException(status_code=404, detail="no recorded report")
     if not path.exists():
         report.render_html(out_path=path)
     return FileResponse(path)

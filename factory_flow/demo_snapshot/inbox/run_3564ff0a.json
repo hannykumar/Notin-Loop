@@ -1,0 +1,1898 @@
+{
+  "run_id": "run_3564ff0a",
+  "created_at": "2026-10-18T16:04:34Z",
+  "kind": "rollback",
+  "severity": "high",
+  "summary": "release-2 rolled back to release-1; health restored; bug reopened for a human",
+  "evidence": {
+    "reopened_bug": {
+      "id": "BUG-D804C2DC",
+      "alert_id": "ALERT-4C4C6ED5F1F9",
+      "signature": "AttributeError@app/orders.py:read_order",
+      "exception_type": "AttributeError",
+      "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/orders.py\", line 47, in read_order\n    return get_order(order_id).to_dict()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'to_dict'\n",
+      "sample_request": {
+        "method": "GET",
+        "path": "/orders/o-9999",
+        "query": {},
+        "body": null
+      },
+      "files": [
+        "app/orders.py",
+        "app/sre_plugin.py"
+      ],
+      "error_share": 1.0,
+      "replay_failures": 3,
+      "evidence_ids": [
+        "E000",
+        "E001",
+        "E002",
+        "E003",
+        "E004"
+      ]
+    },
+    "failed_fix": {
+      "tag": "release-2",
+      "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "run_id": "run_3564ff0a",
+      "files_touched": [
+        "app/orders.py"
+      ],
+      "new_signatures": [
+        "OrderNotFound@app/orders.py:get_order"
+      ]
+    },
+    "rollback": {
+      "tag": "release-2",
+      "actor": "agent",
+      "reason": "watch window not clean",
+      "run_id": "run_3564ff0a",
+      "release": {
+        "tag": "release-2",
+        "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+        "previous_tag": "release-1",
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "run_id": "run_3564ff0a",
+        "promoted_at": "2026-10-18T16:03:59Z",
+        "watch_until": "2026-10-18T16:04:44Z",
+        "status": "watching",
+        "files_touched": [
+          "app/orders.py"
+        ],
+        "baseline": {
+          "instance": "stable",
+          "metrics": {
+            "error_rate_percent": 16.438,
+            "p95_latency_ms": 5.0
+          },
+          "path": "*",
+          "samples": 146,
+          "window_s": 10.159567
+        }
+      },
+      "new_signatures_source": "computed from the watch period",
+      "new_signatures": [
+        "OrderNotFound@app/orders.py:get_order"
+      ],
+      "prod_before": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+      "method": "checkout_previous_tag",
+      "prod_after": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "deployed_ref": "release-1",
+      "ledger_status": "rolled_back",
+      "stable": {
+        "ref": "release-1",
+        "commit": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+        "pid": 77407,
+        "port": 8101,
+        "started_at": "2026-10-18T16:04:22Z",
+        "started_ts": 1792339462.6137311
+      },
+      "verification": {
+        "new_signatures": [
+          "OrderNotFound@app/orders.py:get_order"
+        ],
+        "probes": [
+          {
+            "path": "/reports/daily",
+            "query": {},
+            "statuses": [
+              200,
+              200,
+              200
+            ]
+          }
+        ],
+        "signatures_after_restart": {
+          "AttributeError@app/orders.py:read_order": 33
+        },
+        "current": {
+          "metrics": {
+            "error_rate_percent": 12.571,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "*",
+          "window_s": 10.116672,
+          "samples": 175
+        },
+        "baseline": {
+          "instance": "stable",
+          "metrics": {
+            "error_rate_percent": 16.438,
+            "p95_latency_ms": 5.0
+          },
+          "path": "*",
+          "samples": 146,
+          "window_s": 10.159567
+        },
+        "judgement": {
+          "ok": false,
+          "outcome": "improved",
+          "checks": {
+            "not_regressed": true,
+            "error_rate_within_slo": false,
+            "p95_within_slo": true
+          },
+          "reasons": [
+            "error rate 12.571% > SLO 1.0%"
+          ]
+        },
+        "current_excluding_reopened_bug": {
+          "metrics": {
+            "error_rate_percent": 0.0,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "*",
+          "window_s": 10.116672,
+          "samples": 113,
+          "excluded_paths": [
+            "/orders/{order_id}"
+          ]
+        },
+        "judgement_excluding_reopened_bug": {
+          "ok": true,
+          "outcome": "improved",
+          "checks": {
+            "not_regressed": true,
+            "error_rate_within_slo": true,
+            "p95_within_slo": true
+          },
+          "reasons": []
+        },
+        "outcome": "improved"
+      },
+      "verification_outcome": "improved",
+      "signatures_checked": [
+        "OrderNotFound@app/orders.py:get_order"
+      ],
+      "inbox_case": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/inbox/run_3564ff0a.json",
+      "severity": "high",
+      "paused": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/PAUSED"
+    },
+    "verdict": {
+      "status": "pass",
+      "reasons": [
+        "release-2 rolled back (checkout_previous_tag) to release-1; health verified; bug reopened"
+      ],
+      "checks": {
+        "release_in_ledger": true,
+        "not_already_rolled_back": true,
+        "agent_may_roll_back": true,
+        "prod_moved": true,
+        "stable_restarted": true,
+        "new_signature_paths_probed": true,
+        "probes_ok": true,
+        "new_signatures_gone": true,
+        "stable_has_samples": true,
+        "baseline_has_samples": true,
+        "health_not_regressed": true,
+        "health_error_rate_within_slo": true,
+        "health_p95_within_slo": true,
+        "health_restored": true
+      }
+    },
+    "artifacts_dir": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a",
+    "triage": {
+      "releases_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/releases.json",
+      "releases": 1,
+      "alert_at": "2026-10-18T16:03:25.125863+00:00",
+      "prod_head": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "prod_committed_at": "2026-10-18T18:01:35+02:00"
+    },
+    "investigate": {
+      "investigation_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/investigation.json",
+      "investigation_sha256": "3aa0586b8194a684c02492d5ea4b3de19145561ca2f5a31762e345f2b3a9bba1",
+      "bug_report_sha256": "b2e316c7711f126ac1d422ef4b40fe7f9bdd34a4fbbdc8116e81a6569123a085",
+      "gate": {
+        "passed": true,
+        "checks": {
+          "confidence": true,
+          "margin": true,
+          "independent_evidence": true,
+          "no_critical_contradictions": true,
+          "citations_present": true
+        },
+        "confidence": 1.0,
+        "margin": 1.0,
+        "independent_source_count": 3,
+        "critical_contradictions": []
+      },
+      "signature_counts": {
+        "AttributeError@app/orders.py:read_order": 18
+      },
+      "replay_attempts": [
+        {
+          "status": 500,
+          "signature": "AttributeError@app/orders.py:read_order",
+          "failed": true
+        },
+        {
+          "status": 500,
+          "signature": "AttributeError@app/orders.py:read_order",
+          "failed": true
+        },
+        {
+          "status": 500,
+          "signature": "AttributeError@app/orders.py:read_order",
+          "failed": true
+        }
+      ],
+      "bug_report": {
+        "id": "BUG-D804C2DC",
+        "alert_id": "ALERT-4C4C6ED5F1F9",
+        "signature": "AttributeError@app/orders.py:read_order",
+        "exception_type": "AttributeError",
+        "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/orders.py\", line 47, in read_order\n    return get_order(order_id).to_dict()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'to_dict'\n",
+        "sample_request": {
+          "method": "GET",
+          "path": "/orders/o-9999",
+          "query": {},
+          "body": null
+        },
+        "files": [
+          "app/orders.py",
+          "app/sre_plugin.py"
+        ],
+        "error_share": 1.0,
+        "replay_failures": 3,
+        "evidence_ids": [
+          "E000",
+          "E001",
+          "E002",
+          "E003",
+          "E004"
+        ]
+      },
+      "window": {
+        "since": "2026-10-18T16:03:15.125863Z",
+        "until": "2026-10-18T16:03:29.211327Z",
+        "route": "/orders/{order_id}"
+      }
+    },
+    "qualify": {
+      "rule_id": "none_access",
+      "rule_reason": "Deterministic attribute access on None in application code: a None check is a small, local fix.",
+      "deny_match": null,
+      "out_of_scope_files": [],
+      "flaky_tests": [],
+      "suite_runs": [
+        {
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "junit_path": "/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-junit-qmje33j7.xml"
+        },
+        {
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "junit_path": "/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-junit-4ccp4djw.xml"
+        }
+      ],
+      "checks": {
+        "bug_report_present": true,
+        "no_deny_keywords": true,
+        "files_within_limit": true,
+        "files_in_scope": true,
+        "bug_class_known": true,
+        "prod_suite_green": true
+      }
+    },
+    "reproduce": {
+      "attempts": 1,
+      "fallback_used": false,
+      "rejections": [],
+      "runs": [
+        {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0,
+          "exit_code": 1,
+          "failure_types": [
+            "AssertionError"
+          ]
+        },
+        {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0,
+          "exit_code": 1,
+          "failure_types": [
+            "AssertionError"
+          ]
+        },
+        {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0,
+          "exit_code": 1,
+          "failure_types": [
+            "AssertionError"
+          ]
+        }
+      ],
+      "test_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/test_repro_bug_d804c2dc.py",
+      "test_sha256": "dc483bbce99545c4428732720988ab2647183a12119aae53b7fc7e984c79ee9a",
+      "llm": {
+        "provider": "nebius",
+        "model": "Qwen/Qwen3.8-27B",
+        "last_success_at": 1792339422.350691,
+        "last_failure_at": 0.0,
+        "last_error": ""
+      }
+    },
+    "fix": {
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "diff_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/fix.diff",
+      "fixer": "scripted"
+    },
+    "inspect_diff": {
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "files": [
+        "app/orders.py"
+      ],
+      "lines_changed": 18
+    },
+    "oracle": {
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "ref": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "junit": {
+        "baseline_suite": {
+          "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_baseline_suite.xml",
+          "sha256": "4b47b6d7fe29a29ae98ad55cdb7cdef0e69094d552706a5a812b54fd11ba159a"
+        },
+        "baseline_repro": {
+          "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_baseline_repro.xml",
+          "sha256": "0c5298cab77b10d5345b316241d2768ac8df0fb36cca13d7ac871c11adde7562"
+        },
+        "patched_repro": {
+          "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_patched_repro.xml",
+          "sha256": "9326e531e7f6829166602889a1fb82eebfa47629103fcb7656c03631d18e9f64"
+        },
+        "patched_suite": {
+          "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_patched_suite.xml",
+          "sha256": "95ca18081debf566e402adcd227f76f2765d7b8d367d1d1f694bde3b9c5c9619"
+        }
+      },
+      "test_sha256": "dc483bbce99545c4428732720988ab2647183a12119aae53b7fc7e984c79ee9a",
+      "repro_test": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/test_repro_bug_d804c2dc.py",
+      "baseline": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "baseline_repro": {
+        "passed": 0,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 0
+      },
+      "patched_repro": {
+        "passed": 1,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "patched": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "flaky_excluded": [],
+      "regressions": [],
+      "junit_sha256": "95ca18081debf566e402adcd227f76f2765d7b8d367d1d1f694bde3b9c5c9619"
+    },
+    "canary": {
+      "canary_window_s": 12,
+      "canary_share": 0.2,
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "canary_instance": {
+        "name": "canary",
+        "port": 8102,
+        "pid": 77177,
+        "path": "/private/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-wt-xly0liv4/target_service"
+      },
+      "canary_started_at": 1792339426.7406158,
+      "samples": [
+        {
+          "offset_s": 10,
+          "observed_at": 1792339436.7445319,
+          "stable": {
+            "metrics": {
+              "error_rate_percent": 19.463,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.113568,
+            "samples": 149
+          },
+          "canary": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "canary",
+            "path": "*",
+            "window_s": 8.099843,
+            "samples": 26
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 12.0,
+          "observed_at": 1792339438.7440581,
+          "stable": {
+            "metrics": {
+              "error_rate_percent": 16.438,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.159567,
+            "samples": 146
+          },
+          "canary": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "canary",
+            "path": "*",
+            "window_s": 10.159567,
+            "samples": 33
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        }
+      ]
+    },
+    "promote": {
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "baseline": {
+        "metrics": {
+          "error_rate_percent": 16.438,
+          "p95_latency_ms": 5.0
+        },
+        "instance": "stable",
+        "path": "*",
+        "window_s": 10.159567,
+        "samples": 146
+      },
+      "tag": "release-2",
+      "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+      "previous_tag": "release-1",
+      "files_touched": [
+        "app/orders.py"
+      ],
+      "stable": {
+        "ref": "release-2",
+        "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+        "pid": 77291,
+        "port": 8101,
+        "started_at": "2026-10-18T16:03:59Z",
+        "started_ts": 1792339439.844649
+      }
+    },
+    "watch": {
+      "tag": "release-2",
+      "watch_window_s": 45,
+      "since_ts": 1792339439.844649,
+      "baseline": {
+        "metrics": {
+          "error_rate_percent": 16.438,
+          "p95_latency_ms": 5.0
+        },
+        "instance": "stable",
+        "path": "*",
+        "window_s": 10.159567,
+        "samples": 146
+      },
+      "baseline_signatures": {
+        "AttributeError@app/orders.py:read_order": 95
+      },
+      "bug_signature": "AttributeError@app/orders.py:read_order",
+      "files_touched": [
+        "app/orders.py"
+      ],
+      "samples": [
+        {
+          "offset_s": 2,
+          "observed_at": 1792339441.84966,
+          "signatures": {}
+        },
+        {
+          "offset_s": 4,
+          "observed_at": 1792339443.845958,
+          "signatures": {}
+        },
+        {
+          "offset_s": 6,
+          "observed_at": 1792339445.8479822,
+          "signatures": {}
+        },
+        {
+          "offset_s": 8,
+          "observed_at": 1792339447.849035,
+          "signatures": {}
+        },
+        {
+          "offset_s": 10,
+          "observed_at": 1792339449.846944,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 8.100855,
+            "samples": 142
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 12,
+          "observed_at": 1792339451.845139,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.127492,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 14,
+          "observed_at": 1792339453.846792,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.119401,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 16,
+          "observed_at": 1792339455.845252,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.119401,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 18,
+          "observed_at": 1792339457.849322,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.122884,
+            "samples": 176
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 20,
+          "observed_at": 1792339459.846962,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.116703,
+            "samples": 176
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 22,
+          "observed_at": 1792339461.845151,
+          "signatures": {
+            "OrderNotFound@app/orders.py:get_order": 1
+          },
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.565,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.126701,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        }
+      ],
+      "new_signatures_elsewhere": []
+    }
+  },
+  "stage": "watch",
+  "status": "fail",
+  "reason": "release-2 not clean in watch window; hand to rollback; new signature(s) in files the release touched: OrderNotFound@app/orders.py:get_order",
+  "alert": {
+    "source_type": "generic",
+    "incident_id": "ALERT-4C4C6ED5F1F9",
+    "scenario": "code_bug",
+    "alertname": "HighErrorRate",
+    "summary": "5xx rate 36% on /orders/{order_id} for 6.08546 s",
+    "status": "firing",
+    "fingerprint": "7d1bc06d5ca0bffef6a00560c9f9a2ba81dc9256f58c6451eda2bf4974e3c73c",
+    "starts_at": "2026-10-18T16:03:25.125863Z",
+    "labels": {
+      "path": "/orders/{order_id}",
+      "instance": "stable",
+      "service": "target_service",
+      "severity": "page"
+    },
+    "annotations": {},
+    "source": {
+      "alertname": "HighErrorRate",
+      "service": "target_service",
+      "severity": "page",
+      "status": "firing",
+      "starts_at": "2026-10-18T16:03:25.125863Z",
+      "labels": {
+        "path": "/orders/{order_id}",
+        "instance": "stable"
+      },
+      "summary": "5xx rate 36% on /orders/{order_id} for 6.08546 s",
+      "fingerprint": "7d1bc06d5ca0bffef6a00560c9f9a2ba81dc9256f58c6451eda2bf4974e3c73c",
+      "scenario": "code_bug"
+    },
+    "breach": {
+      "route": "/orders/{order_id}",
+      "instance": "stable",
+      "error_rate_percent": 36.0,
+      "p95_latency_ms": 10.0,
+      "samples": 50,
+      "started_at": "2026-10-18T16:03:25.125863Z",
+      "detected_at": "2026-10-18T16:03:29.211327Z"
+    }
+  },
+  "bug": {
+    "id": "BUG-D804C2DC",
+    "alert_id": "ALERT-4C4C6ED5F1F9",
+    "signature": "AttributeError@app/orders.py:read_order",
+    "exception_type": "AttributeError",
+    "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/orders.py\", line 47, in read_order\n    return get_order(order_id).to_dict()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'to_dict'\n",
+    "sample_request": {
+      "method": "GET",
+      "path": "/orders/o-9999",
+      "query": {},
+      "body": null
+    },
+    "files": [
+      "app/orders.py",
+      "app/sre_plugin.py"
+    ],
+    "error_share": 1.0,
+    "replay_failures": 3,
+    "evidence_ids": [
+      "E000",
+      "E001",
+      "E002",
+      "E003",
+      "E004"
+    ]
+  },
+  "verdicts": [
+    {
+      "stage": "triage",
+      "status": "pass",
+      "reasons": [
+        "no recent release"
+      ],
+      "checks": {
+        "no_own_release": true,
+        "no_recent_human_release": true
+      },
+      "evidence": {
+        "releases_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/releases.json",
+        "releases": 1,
+        "alert_at": "2026-10-18T16:03:25.125863+00:00",
+        "prod_head": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+        "prod_committed_at": "2026-10-18T18:01:35+02:00"
+      },
+      "route": null
+    },
+    {
+      "stage": "investigate",
+      "status": "pass",
+      "reasons": [
+        "AttributeError@app/orders.py:read_order: share 1.0, replay 3/3"
+      ],
+      "checks": {
+        "dominant_share": true,
+        "replay_safe": true,
+        "replay_reproduced": true,
+        "source_types": true,
+        "files_in_app": true,
+        "evidence_gate": true
+      },
+      "evidence": {
+        "investigation_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/investigation.json",
+        "investigation_sha256": "3aa0586b8194a684c02492d5ea4b3de19145561ca2f5a31762e345f2b3a9bba1",
+        "bug_report_sha256": "b2e316c7711f126ac1d422ef4b40fe7f9bdd34a4fbbdc8116e81a6569123a085",
+        "gate": {
+          "passed": true,
+          "checks": {
+            "confidence": true,
+            "margin": true,
+            "independent_evidence": true,
+            "no_critical_contradictions": true,
+            "citations_present": true
+          },
+          "confidence": 1.0,
+          "margin": 1.0,
+          "independent_source_count": 3,
+          "critical_contradictions": []
+        },
+        "signature_counts": {
+          "AttributeError@app/orders.py:read_order": 18
+        },
+        "replay_attempts": [
+          {
+            "status": 500,
+            "signature": "AttributeError@app/orders.py:read_order",
+            "failed": true
+          },
+          {
+            "status": 500,
+            "signature": "AttributeError@app/orders.py:read_order",
+            "failed": true
+          },
+          {
+            "status": 500,
+            "signature": "AttributeError@app/orders.py:read_order",
+            "failed": true
+          }
+        ],
+        "bug_report": {
+          "id": "BUG-D804C2DC",
+          "alert_id": "ALERT-4C4C6ED5F1F9",
+          "signature": "AttributeError@app/orders.py:read_order",
+          "exception_type": "AttributeError",
+          "traceback": "Traceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 157, in call_next\n    message = await recv_stream.receive()\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/streams/memory.py\", line 133, in receive\n    raise EndOfStream from None\nanyio.EndOfStream\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/sre_plugin.py\", line 81, in sre_request_log\n    response = await call_next(request)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 163, in call_next\n    raise app_exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/base.py\", line 149, in coro\n    await self.app(scope, receive_or_disconnect, send_no_error)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py\", line 62, in __call__\n    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 715, in __call__\n    await self.middleware_stack(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 735, in app\n    await route.handle(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 288, in handle\n    await self.app(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 76, in app\n    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 62, in wrapped_app\n    raise exc\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py\", line 51, in wrapped_app\n    await app(scope, receive, sender)\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/routing.py\", line 73, in app\n    response = await f(request)\n               ^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 301, in app\n    raw_response = await run_endpoint_function(\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/fastapi/routing.py\", line 214, in run_endpoint_function\n    return await run_in_threadpool(dependant.call, **values)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/starlette/concurrency.py\", line 39, in run_in_threadpool\n    return await anyio.to_thread.run_sync(func, *args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/to_thread.py\", line 65, in run_sync\n    return await get_async_backend().run_sync_in_worker_thread(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 2706, in run_sync_in_worker_thread\n    return await future\n           ^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py\", line 1100, in run\n    result = context.run(func, *args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/deploy/stable/app/orders.py\", line 47, in read_order\n    return get_order(order_id).to_dict()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'to_dict'\n",
+          "sample_request": {
+            "method": "GET",
+            "path": "/orders/o-9999",
+            "query": {},
+            "body": null
+          },
+          "files": [
+            "app/orders.py",
+            "app/sre_plugin.py"
+          ],
+          "error_share": 1.0,
+          "replay_failures": 3,
+          "evidence_ids": [
+            "E000",
+            "E001",
+            "E002",
+            "E003",
+            "E004"
+          ]
+        },
+        "window": {
+          "since": "2026-10-18T16:03:15.125863Z",
+          "until": "2026-10-18T16:03:29.211327Z",
+          "route": "/orders/{order_id}"
+        }
+      },
+      "route": null
+    },
+    {
+      "stage": "qualify",
+      "status": "pass",
+      "reasons": [
+        "bug class none_access"
+      ],
+      "checks": {
+        "bug_report_present": true,
+        "no_deny_keywords": true,
+        "files_within_limit": true,
+        "files_in_scope": true,
+        "bug_class_known": true,
+        "prod_suite_green": true
+      },
+      "evidence": {
+        "rule_id": "none_access",
+        "rule_reason": "Deterministic attribute access on None in application code: a None check is a small, local fix.",
+        "deny_match": null,
+        "out_of_scope_files": [],
+        "flaky_tests": [],
+        "suite_runs": [
+          {
+            "passed": 16,
+            "failed": 0,
+            "errors": 0,
+            "junit_path": "/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-junit-qmje33j7.xml"
+          },
+          {
+            "passed": 16,
+            "failed": 0,
+            "errors": 0,
+            "junit_path": "/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-junit-4ccp4djw.xml"
+          }
+        ],
+        "checks": {
+          "bug_report_present": true,
+          "no_deny_keywords": true,
+          "files_within_limit": true,
+          "files_in_scope": true,
+          "bug_class_known": true,
+          "prod_suite_green": true
+        }
+      },
+      "route": null
+    },
+    {
+      "stage": "reproduce",
+      "status": "pass",
+      "reasons": [
+        "test fails 3/3 with ['AssertionError']"
+      ],
+      "checks": {
+        "bug_report_present": true,
+        "test_written": true,
+        "lint_ok": true,
+        "red_3_of_3": true
+      },
+      "evidence": {
+        "attempts": 1,
+        "fallback_used": false,
+        "rejections": [],
+        "runs": [
+          {
+            "passed": 0,
+            "failed": 1,
+            "errors": 0,
+            "skipped": 0,
+            "exit_code": 1,
+            "failure_types": [
+              "AssertionError"
+            ]
+          },
+          {
+            "passed": 0,
+            "failed": 1,
+            "errors": 0,
+            "skipped": 0,
+            "exit_code": 1,
+            "failure_types": [
+              "AssertionError"
+            ]
+          },
+          {
+            "passed": 0,
+            "failed": 1,
+            "errors": 0,
+            "skipped": 0,
+            "exit_code": 1,
+            "failure_types": [
+              "AssertionError"
+            ]
+          }
+        ],
+        "test_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/test_repro_bug_d804c2dc.py",
+        "test_sha256": "dc483bbce99545c4428732720988ab2647183a12119aae53b7fc7e984c79ee9a",
+        "llm": {
+          "provider": "nebius",
+          "model": "Qwen/Qwen3.8-27B",
+          "last_success_at": 1792339422.350691,
+          "last_failure_at": 0.0,
+          "last_error": ""
+        }
+      },
+      "route": null
+    },
+    {
+      "stage": "fix",
+      "status": "pass",
+      "reasons": [
+        "fixer returned a diff that applies cleanly to prod"
+      ],
+      "checks": {
+        "inputs_present": true,
+        "fixer_returned": true,
+        "diff_nonempty": true,
+        "diff_applies": true
+      },
+      "evidence": {
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "diff_path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/fix.diff",
+        "fixer": "scripted"
+      },
+      "route": null
+    },
+    {
+      "stage": "inspect_diff",
+      "status": "pass",
+      "reasons": [],
+      "checks": {
+        "valid_unified_diff": true,
+        "file_count_ok": true,
+        "lines_changed_ok": true,
+        "hunks_near_traceback": true,
+        "no_protected_paths": true,
+        "no_banned_imports": true,
+        "no_secrets": true,
+        "no_dependency_files": true,
+        "no_binary": true,
+        "ast_parses": true,
+        "no_frozen_test_literals": true
+      },
+      "evidence": {
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "files": [
+          "app/orders.py"
+        ],
+        "lines_changed": 18
+      },
+      "route": null
+    },
+    {
+      "stage": "oracle",
+      "status": "pass",
+      "reasons": [],
+      "checks": {
+        "diff_applies": true,
+        "repro_red_on_baseline": true,
+        "repro_now_passes": true,
+        "suite_still_green": true
+      },
+      "evidence": {
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "ref": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+        "junit": {
+          "baseline_suite": {
+            "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_baseline_suite.xml",
+            "sha256": "4b47b6d7fe29a29ae98ad55cdb7cdef0e69094d552706a5a812b54fd11ba159a"
+          },
+          "baseline_repro": {
+            "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_baseline_repro.xml",
+            "sha256": "0c5298cab77b10d5345b316241d2768ac8df0fb36cca13d7ac871c11adde7562"
+          },
+          "patched_repro": {
+            "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_patched_repro.xml",
+            "sha256": "9326e531e7f6829166602889a1fb82eebfa47629103fcb7656c03631d18e9f64"
+          },
+          "patched_suite": {
+            "path": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/oracle_patched_suite.xml",
+            "sha256": "95ca18081debf566e402adcd227f76f2765d7b8d367d1d1f694bde3b9c5c9619"
+          }
+        },
+        "test_sha256": "dc483bbce99545c4428732720988ab2647183a12119aae53b7fc7e984c79ee9a",
+        "repro_test": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/artifacts/run_3564ff0a/test_repro_bug_d804c2dc.py",
+        "baseline": {
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "baseline_repro": {
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "patched_repro": {
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "patched": {
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "flaky_excluded": [],
+        "regressions": [],
+        "junit_sha256": "95ca18081debf566e402adcd227f76f2765d7b8d367d1d1f694bde3b9c5c9619"
+      },
+      "route": null
+    },
+    {
+      "stage": "canary",
+      "status": "pass",
+      "reasons": [],
+      "checks": {
+        "hash_matches": true,
+        "diff_applies": true,
+        "canary_started": true,
+        "canary_has_traffic": true,
+        "stable_has_traffic": true,
+        "canary_not_regressed": true,
+        "canary_error_rate_within_slo": true,
+        "canary_p95_within_slo": true
+      },
+      "evidence": {
+        "canary_window_s": 12,
+        "canary_share": 0.2,
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "canary_instance": {
+          "name": "canary",
+          "port": 8102,
+          "pid": 77177,
+          "path": "/private/var/folders/w8/xhm5tzs52sj3p9v_l45bkk3c0000gn/T/sre-wt-xly0liv4/target_service"
+        },
+        "canary_started_at": 1792339426.7406158,
+        "samples": [
+          {
+            "offset_s": 10,
+            "observed_at": 1792339436.7445319,
+            "stable": {
+              "metrics": {
+                "error_rate_percent": 19.463,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.113568,
+              "samples": 149
+            },
+            "canary": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "canary",
+              "path": "*",
+              "window_s": 8.099843,
+              "samples": 26
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 12.0,
+            "observed_at": 1792339438.7440581,
+            "stable": {
+              "metrics": {
+                "error_rate_percent": 16.438,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.159567,
+              "samples": 146
+            },
+            "canary": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "canary",
+              "path": "*",
+              "window_s": 10.159567,
+              "samples": 33
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          }
+        ]
+      },
+      "route": null
+    },
+    {
+      "stage": "promote",
+      "status": "pass",
+      "reasons": [],
+      "checks": {
+        "hash_matches": true,
+        "not_already_released": true,
+        "baseline_has_samples": true,
+        "prod_matches_ledger": true,
+        "claimed": true,
+        "diff_applies": true,
+        "committed": true,
+        "stable_restarted": true
+      },
+      "evidence": {
+        "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+        "baseline": {
+          "metrics": {
+            "error_rate_percent": 16.438,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "*",
+          "window_s": 10.159567,
+          "samples": 146
+        },
+        "tag": "release-2",
+        "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+        "previous_tag": "release-1",
+        "files_touched": [
+          "app/orders.py"
+        ],
+        "stable": {
+          "ref": "release-2",
+          "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+          "pid": 77291,
+          "port": 8101,
+          "started_at": "2026-10-18T16:03:59Z",
+          "started_ts": 1792339439.844649
+        }
+      },
+      "route": null
+    },
+    {
+      "stage": "watch",
+      "status": "fail",
+      "reasons": [
+        "release-2 not clean in watch window; hand to rollback",
+        "new signature(s) in files the release touched: OrderNotFound@app/orders.py:get_order"
+      ],
+      "checks": {
+        "bug_signature_absent": true,
+        "no_new_signatures_in_touched_files": false,
+        "slo_holds": true
+      },
+      "evidence": {
+        "tag": "release-2",
+        "watch_window_s": 45,
+        "since_ts": 1792339439.844649,
+        "baseline": {
+          "metrics": {
+            "error_rate_percent": 16.438,
+            "p95_latency_ms": 5.0
+          },
+          "instance": "stable",
+          "path": "*",
+          "window_s": 10.159567,
+          "samples": 146
+        },
+        "baseline_signatures": {
+          "AttributeError@app/orders.py:read_order": 95
+        },
+        "bug_signature": "AttributeError@app/orders.py:read_order",
+        "files_touched": [
+          "app/orders.py"
+        ],
+        "samples": [
+          {
+            "offset_s": 2,
+            "observed_at": 1792339441.84966,
+            "signatures": {}
+          },
+          {
+            "offset_s": 4,
+            "observed_at": 1792339443.845958,
+            "signatures": {}
+          },
+          {
+            "offset_s": 6,
+            "observed_at": 1792339445.8479822,
+            "signatures": {}
+          },
+          {
+            "offset_s": 8,
+            "observed_at": 1792339447.849035,
+            "signatures": {}
+          },
+          {
+            "offset_s": 10,
+            "observed_at": 1792339449.846944,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 8.100855,
+              "samples": 142
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 12,
+            "observed_at": 1792339451.845139,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.127492,
+              "samples": 177
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 14,
+            "observed_at": 1792339453.846792,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.119401,
+              "samples": 177
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 16,
+            "observed_at": 1792339455.845252,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.119401,
+              "samples": 177
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 18,
+            "observed_at": 1792339457.849322,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.122884,
+              "samples": 176
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 20,
+            "observed_at": 1792339459.846962,
+            "signatures": {},
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.0,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.116703,
+              "samples": 176
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          },
+          {
+            "offset_s": 22,
+            "observed_at": 1792339461.845151,
+            "signatures": {
+              "OrderNotFound@app/orders.py:get_order": 1
+            },
+            "current": {
+              "metrics": {
+                "error_rate_percent": 0.565,
+                "p95_latency_ms": 5.0
+              },
+              "instance": "stable",
+              "path": "*",
+              "window_s": 10.126701,
+              "samples": 177
+            },
+            "judgement": {
+              "ok": true,
+              "outcome": "improved",
+              "checks": {
+                "not_regressed": true,
+                "error_rate_within_slo": true,
+                "p95_within_slo": true
+              },
+              "reasons": []
+            }
+          }
+        ],
+        "new_signatures_elsewhere": []
+      },
+      "route": "rollback"
+    },
+    {
+      "stage": "rollback",
+      "status": "pass",
+      "reasons": [
+        "release-2 rolled back (checkout_previous_tag) to release-1; health verified; bug reopened"
+      ],
+      "checks": {
+        "release_in_ledger": true,
+        "not_already_rolled_back": true,
+        "agent_may_roll_back": true,
+        "prod_moved": true,
+        "stable_restarted": true,
+        "new_signature_paths_probed": true,
+        "probes_ok": true,
+        "new_signatures_gone": true,
+        "stable_has_samples": true,
+        "baseline_has_samples": true,
+        "health_not_regressed": true,
+        "health_error_rate_within_slo": true,
+        "health_p95_within_slo": true,
+        "health_restored": true
+      },
+      "evidence": {
+        "tag": "release-2",
+        "actor": "agent",
+        "reason": "watch window not clean",
+        "run_id": "run_3564ff0a",
+        "release": {
+          "tag": "release-2",
+          "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+          "previous_tag": "release-1",
+          "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+          "run_id": "run_3564ff0a",
+          "promoted_at": "2026-10-18T16:03:59Z",
+          "watch_until": "2026-10-18T16:04:44Z",
+          "status": "watching",
+          "files_touched": [
+            "app/orders.py"
+          ],
+          "baseline": {
+            "instance": "stable",
+            "metrics": {
+              "error_rate_percent": 16.438,
+              "p95_latency_ms": 5.0
+            },
+            "path": "*",
+            "samples": 146,
+            "window_s": 10.159567
+          }
+        },
+        "new_signatures_source": "computed from the watch period",
+        "new_signatures": [
+          "OrderNotFound@app/orders.py:get_order"
+        ],
+        "prod_before": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+        "method": "checkout_previous_tag",
+        "prod_after": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+        "deployed_ref": "release-1",
+        "ledger_status": "rolled_back",
+        "stable": {
+          "ref": "release-1",
+          "commit": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+          "pid": 77407,
+          "port": 8101,
+          "started_at": "2026-10-18T16:04:22Z",
+          "started_ts": 1792339462.6137311
+        },
+        "verification": {
+          "new_signatures": [
+            "OrderNotFound@app/orders.py:get_order"
+          ],
+          "probes": [
+            {
+              "path": "/reports/daily",
+              "query": {},
+              "statuses": [
+                200,
+                200,
+                200
+              ]
+            }
+          ],
+          "signatures_after_restart": {
+            "AttributeError@app/orders.py:read_order": 33
+          },
+          "current": {
+            "metrics": {
+              "error_rate_percent": 12.571,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.116672,
+            "samples": 175
+          },
+          "baseline": {
+            "instance": "stable",
+            "metrics": {
+              "error_rate_percent": 16.438,
+              "p95_latency_ms": 5.0
+            },
+            "path": "*",
+            "samples": 146,
+            "window_s": 10.159567
+          },
+          "judgement": {
+            "ok": false,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": false,
+              "p95_within_slo": true
+            },
+            "reasons": [
+              "error rate 12.571% > SLO 1.0%"
+            ]
+          },
+          "current_excluding_reopened_bug": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.116672,
+            "samples": 113,
+            "excluded_paths": [
+              "/orders/{order_id}"
+            ]
+          },
+          "judgement_excluding_reopened_bug": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          },
+          "outcome": "improved"
+        },
+        "verification_outcome": "improved",
+        "signatures_checked": [
+          "OrderNotFound@app/orders.py:get_order"
+        ],
+        "inbox_case": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/inbox/run_3564ff0a.json",
+        "severity": "high",
+        "paused": "/Users/hannykumar/SRE AGENT SAP/Notin-Loop/factory_flow/runs/PAUSED"
+      },
+      "route": null
+    }
+  ],
+  "stopping_verdict": {
+    "stage": "watch",
+    "status": "fail",
+    "reasons": [
+      "release-2 not clean in watch window; hand to rollback",
+      "new signature(s) in files the release touched: OrderNotFound@app/orders.py:get_order"
+    ],
+    "checks": {
+      "bug_signature_absent": true,
+      "no_new_signatures_in_touched_files": false,
+      "slo_holds": true
+    },
+    "evidence": {
+      "tag": "release-2",
+      "watch_window_s": 45,
+      "since_ts": 1792339439.844649,
+      "baseline": {
+        "metrics": {
+          "error_rate_percent": 16.438,
+          "p95_latency_ms": 5.0
+        },
+        "instance": "stable",
+        "path": "*",
+        "window_s": 10.159567,
+        "samples": 146
+      },
+      "baseline_signatures": {
+        "AttributeError@app/orders.py:read_order": 95
+      },
+      "bug_signature": "AttributeError@app/orders.py:read_order",
+      "files_touched": [
+        "app/orders.py"
+      ],
+      "samples": [
+        {
+          "offset_s": 2,
+          "observed_at": 1792339441.84966,
+          "signatures": {}
+        },
+        {
+          "offset_s": 4,
+          "observed_at": 1792339443.845958,
+          "signatures": {}
+        },
+        {
+          "offset_s": 6,
+          "observed_at": 1792339445.8479822,
+          "signatures": {}
+        },
+        {
+          "offset_s": 8,
+          "observed_at": 1792339447.849035,
+          "signatures": {}
+        },
+        {
+          "offset_s": 10,
+          "observed_at": 1792339449.846944,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 8.100855,
+            "samples": 142
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 12,
+          "observed_at": 1792339451.845139,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.127492,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 14,
+          "observed_at": 1792339453.846792,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.119401,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 16,
+          "observed_at": 1792339455.845252,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.119401,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 18,
+          "observed_at": 1792339457.849322,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.122884,
+            "samples": 176
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 20,
+          "observed_at": 1792339459.846962,
+          "signatures": {},
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.0,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.116703,
+            "samples": 176
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        },
+        {
+          "offset_s": 22,
+          "observed_at": 1792339461.845151,
+          "signatures": {
+            "OrderNotFound@app/orders.py:get_order": 1
+          },
+          "current": {
+            "metrics": {
+              "error_rate_percent": 0.565,
+              "p95_latency_ms": 5.0
+            },
+            "instance": "stable",
+            "path": "*",
+            "window_s": 10.126701,
+            "samples": 177
+          },
+          "judgement": {
+            "ok": true,
+            "outcome": "improved",
+            "checks": {
+              "not_regressed": true,
+              "error_rate_within_slo": true,
+              "p95_within_slo": true
+            },
+            "reasons": []
+          }
+        }
+      ],
+      "new_signatures_elsewhere": []
+    },
+    "route": "rollback"
+  }
+}

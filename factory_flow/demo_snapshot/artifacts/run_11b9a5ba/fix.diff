@@ -1,0 +1,9 @@
+--- a/app/cart.py
++++ b/app/cart.py
+@@ -31,5 +31,5 @@
+ @router.get("/cart/total")
+ def cart_total(user: str) -> dict[str, Any]:
+     cart = CARTS.get(user, {})
+-    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart["items"])
++    total = sum(PRICES.get(item["sku"], 0.0) * item["qty"] for item in cart.get("items", []))
+     return {"user": user, "total": round(total, 2)}

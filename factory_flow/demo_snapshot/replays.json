@@ -1,0 +1,33 @@
+{
+  "run_11b9a5ba": {
+    "reproduced": true,
+    "lines": [
+      "replay run_11b9a5ba",
+      "chain: ok (hashes and HMACs verified)",
+      "ref: 28eab63d18304d69b9db23498b72a846fbf7d168",
+      "  inspect_diff  seq 7: recorded pass   replayed pass   match",
+      "  oracle        seq 8: recorded pass   replayed pass   match",
+      "decision reproduced"
+    ]
+  },
+  "run_9e03ac49": {
+    "reproduced": true,
+    "lines": [
+      "replay run_9e03ac49",
+      "chain: ok (hashes and HMACs verified)",
+      "ref: release-0",
+      "decision reproduced"
+    ]
+  },
+  "run_3564ff0a": {
+    "reproduced": true,
+    "lines": [
+      "replay run_3564ff0a",
+      "chain: ok (hashes and HMACs verified)",
+      "ref: b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "  inspect_diff  seq 23: recorded pass   replayed pass   match",
+      "  oracle        seq 24: recorded pass   replayed pass   match",
+      "decision reproduced"
+    ]
+  }
+}

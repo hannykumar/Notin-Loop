@@ -1,0 +1,32 @@
+# Upload only what the read-only dashboard needs: main.py, factory_flow/factory, factory_flow/demo_snapshot,
+# and SRE-agent's stdlib-only agent/ and runtime/ packages (imported by factory/sre_base.py).
+.venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.git
+.claude
+**/.env
+factory_flow/runs
+factory_flow/runs_ui.log
+factory_flow/tests
+factory_flow/target_service
+factory_flow/scripts
+SRE-agent/frontend
+SRE-agent/artifacts
+SRE-agent/traces
+SRE-agent/evaluation
+SRE-agent/tests
+SRE-agent/data
+SRE-agent/docs
+SRE-agent/docker
+SRE-agent/lab
+SRE-agent/integrations
+SRE-agent/executor
+SRE-agent/runbooks
+SRE-agent/scripts
+SRE-agent/runtime.db
+SRE-agent/Dockerfile
+SRE-agent/docker-compose*.yml
+__pycache__

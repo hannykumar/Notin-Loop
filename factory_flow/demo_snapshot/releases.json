@@ -1,0 +1,50 @@
+{
+  "releases": [
+    {
+      "baseline": {
+        "instance": "stable",
+        "metrics": {
+          "error_rate_percent": 14.765,
+          "p95_latency_ms": 5.0
+        },
+        "path": "*",
+        "samples": 149,
+        "window_s": 10.166569
+      },
+      "commit": "b8734d2e3c7b60bf6b1f7f9c810fe5251bbd4f7c",
+      "diff_sha256": "2e2eb89a32be90144d1d56dedd1eae8829216258ecb166d6e9ade32132d42d52",
+      "files_touched": [
+        "app/cart.py"
+      ],
+      "previous_tag": "release-0",
+      "promoted_at": "2026-10-18T16:01:35Z",
+      "run_id": "run_11b9a5ba",
+      "status": "kept",
+      "tag": "release-1",
+      "watch_until": "2026-10-18T16:02:20Z"
+    },
+    {
+      "baseline": {
+        "instance": "stable",
+        "metrics": {
+          "error_rate_percent": 16.438,
+          "p95_latency_ms": 5.0
+        },
+        "path": "*",
+        "samples": 146,
+        "window_s": 10.159567
+      },
+      "commit": "e99574b09fb1384f85864d9d4b28cf89c72fca70",
+      "diff_sha256": "69e31f5ccd720801ed60f068e683cf0645978bf7dce3ca2ae7883cfe430552db",
+      "files_touched": [
+        "app/orders.py"
+      ],
+      "previous_tag": "release-1",
+      "promoted_at": "2026-10-18T16:03:59Z",
+      "run_id": "run_3564ff0a",
+      "status": "rolled_back",
+      "tag": "release-2",
+      "watch_until": "2026-10-18T16:04:44Z"
+    }
+  ]
+}
