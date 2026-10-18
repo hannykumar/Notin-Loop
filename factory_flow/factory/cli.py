@@ -38,6 +38,7 @@ PROFILES = {"cart": "break_cart", "stock": "break_stock", "404": "break_404", "n
 # alert -> pipeline done: reproduce + fix (LLM) + oracle + canary + watch window + rollback settle, with slack
 DEMO_TIMEOUT_S = 2 * policy.FIXER_TIMEOUT_S + policy.CANARY_WINDOW_S + policy.WATCH_WINDOW_S + 300
 # after a run: traffic is normal again; wait until the alert window holds only normal traffic before done()
+WARMUP_S = 2 * policy.ALERT_WINDOW_S   # healthy traffic before the first break: the watcher needs a baseline
 SETTLE_S = policy.ALERT_WINDOW_S + policy.SCRAPE_INTERVAL_S * policy.ALERT_CONSECUTIVE_WINDOWS
 
 
@@ -292,16 +293,14 @@ def cmd_start(args) -> int:
     return 0
 
 
-def _wait_quiet() -> None:
-    """Triage treats any release (or prod commit) younger than ROLLBACK_LOOKBACK_S as the alert's cause;
-    start a break only after the previous change is out of that window."""
-    while True:
-        last = float(releases.git("log", "-1", "--format=%ct", "prod"))
-        left = last + policy.ROLLBACK_LOOKBACK_S + policy.SCRAPE_INTERVAL_S - time.time()
-        if releases.in_window() is None and left <= 0:
-            return
-        print(f"  waiting {max(left, policy.SCRAPE_INTERVAL_S):.0f}s for the triage lookback window", flush=True)
-        time.sleep(max(min(left, 30), policy.SCRAPE_INTERVAL_S))
+def _wait_quiet(warmup_s: float = 0.0) -> None:
+    """Start a break only once no agent release is in its watch/lookback window (triage would blame it),
+    after an optional warm-up so the watcher has a healthy baseline window. Tagged releases (release-0 after a
+    reset) are known to triage, so a young prod commit needs no wait."""
+    time.sleep(warmup_s)
+    while releases.in_window() is not None:
+        print("  waiting for the previous release's watch window", flush=True)
+        time.sleep(policy.SCRAPE_INTERVAL_S)
 
 
 def _wait_run(results: list, start: int, path: str, timeout_s: float):
@@ -327,7 +326,7 @@ def cmd_run_all(args) -> int:
             if pipeline.is_paused():
                 print("  line paused by an earlier demo; resuming for the next one")
                 pipeline.resume(actor="run-all")
-            _wait_quiet()
+            _wait_quiet(WARMUP_S if not results else 0.0)
             print(f"== {sc['id']}: break {sc['break']} ({sc['name']})", flush=True)
             start = len(results)
             set_profile(sc["break"])
