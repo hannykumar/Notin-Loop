@@ -1,0 +1,6 @@
+CARTS = {"c1": {"items": [{"sku": "A", "price": 2.5, "qty": 2}]}, "empty": {}}
+
+
+def cart_total(cart_id: str) -> float:
+    cart = CARTS[cart_id]
+    return sum(item["price"] * item["qty"] for item in cart["items"])
