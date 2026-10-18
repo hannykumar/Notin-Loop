@@ -1,0 +1,11 @@
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: sre-agent-webhook
+    group_by:
+      - alertname
+      - service
+    group_wait: 0s
+    group_interval: 30s
+    repeat_interval: 5m

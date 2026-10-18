@@ -1,0 +1,179 @@
+{
+  "catalog_version": "2026-08-23.1-causal-lab",
+  "incident_types": [
+    {
+      "incident_type": "CrashLoopBackOff",
+      "summary": "Pods restart repeatedly because the workload crashes or is killed by the platform.",
+      "keywords": ["crashloop", "oomkilled", "oom", "out of memory", "restart", "backoff", "killed"],
+      "runbook_files": ["01_crashloopbackoff_oomkilled.md"],
+      "discriminating_tools": ["get_pod_status", "describe_pod", "get_metrics", "get_pod_logs", "get_recent_deploys"],
+      "confirmation_rules": [
+        {
+          "rule_id": "crashloop_oomkilled_reason",
+          "all": [{"path": "pod_describe.last_state.terminated.reason", "equals": "OOMKilled"}],
+          "confidence": 0.97,
+          "citations": ["tool:describe_pod"],
+          "reason": "The pod termination reason is OOMKilled."
+        },
+        {
+          "rule_id": "crashloop_oom_and_restart",
+          "all": [
+            {"path": "pod_describe.last_state.terminated.reason", "equals": "OOMKilled"},
+            {"path": "pod_status.restarts", "gte": 1}
+          ],
+          "confidence": 0.98,
+          "citations": ["tool:describe_pod", "tool:get_pod_status"],
+          "reason": "The container was OOMKilled and Kubernetes has restarted it."
+        },
+        {
+          "rule_id": "crashloop_memory_and_logs",
+          "all": [
+            {"path": "metrics.memory_percent", "gte": 90},
+            {"path": "logs_tail", "contains": "out of memory"}
+          ],
+          "confidence": 0.9,
+          "citations": ["tool:get_metrics", "tool:get_pod_logs"],
+          "reason": "Memory saturation and out-of-memory logs confirm the crash pattern."
+        },
+        {
+          "rule_id": "crashloop_restart_signal",
+          "all": [
+            {"path": "pod_status.restarts", "gte": 5},
+            {"path": "pod_status.reason", "contains": "CrashLoop"}
+          ],
+          "confidence": 0.75,
+          "citations": ["tool:get_pod_status"],
+          "reason": "Restart count and pod reason both show a crash loop."
+        }
+      ],
+      "verification_rules": [
+        {"metric": "error_rate_percent", "direction": "decrease", "optional": true},
+        {"metric": "memory_percent", "direction": "decrease", "optional": true},
+        {"log_absent": ["out of memory", "oomkilled"], "optional": true}
+      ],
+      "safe_actions": []
+    },
+    {
+      "incident_type": "Service503",
+      "summary": "The service is returning 503 because dependencies are timing out or the workload is not healthy.",
+      "keywords": ["503", "upstream timeout", "dependency failure", "unavailable", "gateway", "health check"],
+      "runbook_files": ["04_service_503_upstream_down.md"],
+      "discriminating_tools": ["get_metrics", "get_pod_logs", "get_service_dependencies", "get_pod_status", "query_prometheus", "query_loki", "get_recent_deploys", "query_tempo"],
+      "confirmation_rules": [
+        {
+          "rule_id": "svc503_logs_and_error_rate",
+          "all": [
+            {"path": "logs_tail", "contains": "503"},
+            {"path": "logs_tail", "contains": "upstream"},
+            {"path": "metrics.error_rate_percent", "gte": 5}
+          ],
+          "confidence": 0.91,
+          "citations": ["tool:get_pod_logs", "tool:get_metrics"],
+          "reason": "Upstream timeout logs plus elevated error rate confirm the 503 incident."
+        },
+        {
+          "rule_id": "svc503_trace_dependency",
+          "all": [
+            {"path": "trace_context", "contains": "timeout"},
+            {"path": "metrics.p95_latency_ms", "gte": 1000}
+          ],
+          "confidence": 0.83,
+          "citations": ["tool:query_tempo", "tool:get_metrics"],
+          "reason": "Trace errors and elevated latency point to a dependency-driven 503 incident."
+        }
+      ],
+      "verification_rules": [
+        {"metric": "error_rate_percent", "direction": "decrease", "max_value": 20},
+        {"metric": "p95_latency_ms", "direction": "decrease", "optional": true},
+        {"log_absent": ["503", "upstream timeout"], "optional": true}
+      ],
+      "safe_actions": [
+        {
+          "action_type": "scale_deployment",
+          "target_source": "first_unavailable_dependency",
+          "conditions": [{"path": "service_dependencies.unavailable_count", "gte": 1}],
+          "params": {"replicas": 1},
+          "reason": "Restore the dependency deployment only after live workload evidence confirms that it has zero ready replicas."
+        }
+      ]
+    },
+    {
+      "incident_type": "DeploymentRegression",
+      "summary": "A recent deployment introduced elevated 5xx responses or latency while the workload remains healthy.",
+      "keywords": ["deployment", "release", "regression", "rollout", "new version", "after deploy"],
+      "runbook_files": ["12_deployment_regression_recent_release.md"],
+      "discriminating_tools": ["get_recent_deploys", "get_metrics", "get_pod_logs", "get_pod_status"],
+      "confirmation_rules": [
+        {
+          "rule_id": "deployment_regression_change_and_errors",
+          "all": [
+            {"path": "recent_deploys", "present": true},
+            {"path": "logs_tail", "contains_any": ["after deploy", "new release", "regression"]},
+            {"path": "metrics.error_rate_percent", "gte": 5}
+          ],
+          "confidence": 0.94,
+          "citations": ["tool:get_recent_deploys", "tool:get_pod_logs", "tool:get_metrics"],
+          "reason": "A recent release aligns with new regression logs and an elevated error rate."
+        }
+      ],
+      "verification_rules": [
+        {"metric": "error_rate_percent", "direction": "decrease"},
+        {"metric": "p95_latency_ms", "direction": "decrease", "optional": true},
+        {"log_absent": ["regression", "new release"], "optional": true}
+      ],
+      "safe_actions": [
+        {
+          "action_type": "gitops_rollback_deployment",
+          "conditions": [{"path": "incident.config_management", "equals": "gitops"}],
+          "params": {},
+          "reason": "Roll back the correlated release through an auditable GitOps change."
+        }
+      ]
+    },
+    {
+      "incident_type": "DNSFailure",
+      "summary": "The workload cannot resolve a dependency name; the cause may be workload-local, cluster DNS, policy, or upstream resolution.",
+      "keywords": ["dns", "nxdomain", "could not resolve", "resolver", "coredns"],
+      "runbook_files": ["05_dns_resolution_failures.md"],
+      "discriminating_tools": ["get_pod_logs", "get_cluster_events", "get_metrics", "get_pod_status", "query_loki", "query_prometheus"],
+      "confirmation_rules": [
+        {
+          "rule_id": "dns_logs_and_metrics",
+          "all": [
+            {"path": "logs_tail", "contains_any": ["nxdomain", "could not resolve"]},
+            {"path": "metrics.dns_error_rate_percent", "gte": 5}
+          ],
+          "confidence": 0.9,
+          "citations": ["tool:get_pod_logs", "tool:get_metrics"],
+          "reason": "Resolver errors in logs and DNS error metrics both point to cluster DNS failure."
+        },
+        {
+          "rule_id": "dns_logs_and_events",
+          "all": [
+            {"path": "logs_tail", "contains_any": ["nxdomain", "could not resolve"]},
+            {"path": "cluster_events", "contains": "dns"}
+          ],
+          "confidence": 0.86,
+          "citations": ["tool:get_pod_logs", "tool:get_cluster_events"],
+          "reason": "Resolver errors and DNS-related cluster events corroborate the incident."
+        },
+        {
+          "rule_id": "dns_workload_logs_and_health",
+          "all": [
+            {"path": "logs_tail", "contains_any": ["nxdomain", "could not resolve"]},
+            {"path": "pod_status.phase", "equals": "Running"}
+          ],
+          "confidence": 0.86,
+          "citations": ["tool:get_pod_logs", "tool:get_pod_status"],
+          "reason": "A running workload repeatedly reports concrete resolver failures without evidence that CoreDNS itself is unhealthy."
+        }
+      ],
+      "verification_rules": [
+        {"metric": "dns_error_rate_percent", "direction": "decrease"},
+        {"metric": "error_rate_percent", "direction": "decrease", "optional": true},
+        {"log_absent": ["nxdomain", "could not resolve"], "optional": true}
+      ],
+      "safe_actions": []
+    }
+  ]
+}

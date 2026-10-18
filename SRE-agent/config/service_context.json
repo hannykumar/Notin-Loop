@@ -1,0 +1,108 @@
+{
+  "services": {
+    "demo-api": {
+      "namespace": "sre-lab",
+      "owner": {"team": "sre-lab", "slack": "#sre-lab", "pagerduty": "lab-only"},
+      "dependencies": ["payments"],
+      "dashboards": [
+        {"title": "Kind Demo API", "uid": "kind-demo-api", "panels": ["request_rate", "error_rate", "dependencies", "deploys"]}
+      ],
+      "recent_deploys": [],
+      "incident_history": [],
+      "trace_summary": []
+    },
+    "checkout": {
+      "owner": {"team": "checkout-platform", "slack": "#checkout-sre", "pagerduty": "checkout-primary"},
+      "dashboards": [
+        {"title": "Checkout Service Overview", "uid": "checkout-overview", "panels": ["request_rate", "error_rate", "latency", "memory", "deploys"]}
+      ],
+      "recent_deploys": [
+        {"version": "checkout-2026.03.12.1", "minutes_ago": 18, "actor": "deploy-bot", "status": "completed"},
+        {"version": "checkout-2026.03.11.4", "minutes_ago": 1430, "actor": "deploy-bot", "status": "completed"}
+      ],
+      "incident_history": [
+        {"incident_id": "HIST-1001", "type": "CrashLoopBackOff", "hours_ago": 72, "resolution": "scaled deployment"},
+        {"incident_id": "HIST-1002", "type": "HighMemory", "hours_ago": 336, "resolution": "heap leak fix"},
+        {"incident_id": "HIST-1003", "type": "DeploymentRegression", "hours_ago": 520, "resolution": "rollback"}
+      ],
+      "trace_summary": [
+        {"trace_id": "trace-checkout-1", "service": "checkout", "span": "payments client", "error": "timeout", "duration_ms": 2140},
+        {"trace_id": "trace-checkout-2", "service": "checkout", "span": "postgres query", "error": "too many clients", "duration_ms": 980}
+      ]
+    },
+    "api": {
+      "owner": {"team": "api-core", "slack": "#api-oncall", "pagerduty": "api-primary"},
+      "dashboards": [
+        {"title": "API Service Golden Signals", "uid": "api-golden", "panels": ["error_rate", "latency", "pods", "dependencies", "deploys"]}
+      ],
+      "recent_deploys": [
+        {"version": "api-2026.03.12.2", "minutes_ago": 9, "actor": "deploy-bot", "status": "completed"},
+        {"version": "api-2026.03.11.7", "minutes_ago": 1180, "actor": "deploy-bot", "status": "completed"}
+      ],
+      "incident_history": [
+        {"incident_id": "HIST-2001", "type": "Service503", "hours_ago": 40, "resolution": "restarted unhealthy pods"},
+        {"incident_id": "HIST-2002", "type": "DeploymentRegression", "hours_ago": 190, "resolution": "rollback"},
+        {"incident_id": "HIST-2003", "type": "DatabaseConnectionFailure", "hours_ago": 420, "resolution": "pool config fix"}
+      ],
+      "trace_summary": [
+        {"trace_id": "trace-api-1", "service": "api", "span": "payments upstream", "error": "deadline exceeded", "duration_ms": 2013},
+        {"trace_id": "trace-api-2", "service": "api", "span": "payments-db", "error": "too many clients", "duration_ms": 1540}
+      ]
+    },
+    "worker": {
+      "owner": {"team": "async-jobs", "slack": "#jobs-oncall", "pagerduty": "jobs-primary"},
+      "dashboards": [
+        {"title": "Worker Queue Health", "uid": "worker-queue", "panels": ["throughput", "errors", "dns", "queue_depth", "worker_lag"]}
+      ],
+      "recent_deploys": [
+        {"version": "worker-2026.03.10.5", "minutes_ago": 2100, "actor": "deploy-bot", "status": "completed"},
+        {"version": "worker-2026.03.12.1", "minutes_ago": 44, "actor": "deploy-bot", "status": "completed"}
+      ],
+      "incident_history": [
+        {"incident_id": "HIST-3001", "type": "DNSFailure", "hours_ago": 96, "resolution": "restarted coredns"},
+        {"incident_id": "HIST-3002", "type": "QueueBacklog", "hours_ago": 250, "resolution": "scaled workers"}
+      ],
+      "trace_summary": [
+        {"trace_id": "trace-worker-1", "service": "worker", "span": "dns lookup", "error": "NXDOMAIN", "duration_ms": 312},
+        {"trace_id": "trace-worker-2", "service": "worker", "span": "queue worker", "error": "retry storm", "duration_ms": 1210}
+      ]
+    },
+    "coredns": {
+      "owner": {"team": "platform-networking", "slack": "#cluster-networking", "pagerduty": "networking-primary"},
+      "dashboards": [
+        {"title": "CoreDNS Health", "uid": "coredns-health", "panels": ["dns_errors", "latency", "pod_restarts"]}
+      ],
+      "recent_deploys": [],
+      "incident_history": [],
+      "trace_summary": []
+    },
+    "ingress": {
+      "owner": {"team": "edge-platform", "slack": "#edge-sre", "pagerduty": "edge-primary"},
+      "dashboards": [
+        {"title": "Ingress TLS Edge", "uid": "ingress-edge", "panels": ["tls_handshake_errors", "5xx", "latency"]}
+      ],
+      "recent_deploys": [
+        {"version": "ingress-2026.03.12.3", "minutes_ago": 27, "actor": "deploy-bot", "status": "completed"}
+      ],
+      "incident_history": [
+        {"incident_id": "HIST-4001", "type": "TLSCertificateExpiry", "hours_ago": 720, "resolution": "rotated cert"}
+      ],
+      "trace_summary": [
+        {"trace_id": "trace-ingress-1", "service": "ingress", "span": "tls handshake", "error": "certificate expired", "duration_ms": 45}
+      ]
+    },
+    "payments-db": {
+      "owner": {"team": "data-platform", "slack": "#db-oncall", "pagerduty": "db-primary"},
+      "dashboards": [
+        {"title": "Payments DB", "uid": "payments-db", "panels": ["connections", "latency", "errors"]}
+      ],
+      "recent_deploys": [],
+      "incident_history": [
+        {"incident_id": "HIST-5001", "type": "DatabaseConnectionFailure", "hours_ago": 300, "resolution": "increased pool size"}
+      ],
+      "trace_summary": [
+        {"trace_id": "trace-db-1", "service": "payments-db", "span": "postgres accept", "error": "too many clients", "duration_ms": 88}
+      ]
+    }
+  }
+}

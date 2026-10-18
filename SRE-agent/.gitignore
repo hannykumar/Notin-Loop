@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+
+# Test and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Environment files
+.env
+.env.*
+!.env.live.example
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Local runtime data
+runtime.db
+*.db
+*.sqlite
+*.sqlite3
+artifacts/
+traces/
+eval_history/
+eval_results.json
+archive/
+data/mock_live_state/
+data/gitops_repo/_changes/
+
+# Logs and temporary files
+*.log
+tmp/

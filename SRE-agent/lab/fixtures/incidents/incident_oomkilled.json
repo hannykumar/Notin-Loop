@@ -1,0 +1,55 @@
+{
+  "incident_id": "INC-001",
+  "title": "Checkout service pods restarting",
+  "description": "Pods are restarting and kubectl describe shows OOMKilled, CrashLoopBackOff",
+  "service": "checkout",
+  "namespace": "prod",
+  "config_management": "gitops",
+  "gitops_manifest_path": "clusters/prod/checkout.json",
+
+  "pod_status": {
+    "pod_name": "checkout-7c9f7c7c9f-abc12",
+    "phase": "Running",
+    "restarts": 17,
+    "reason": "CrashLoopBackOff",
+    "replicas": 1
+  },
+
+  "pod_describe": {
+    "last_state": {
+      "terminated": {
+        "reason": "OOMKilled",
+        "exit_code": 137
+      }
+    },
+    "limits": {
+      "memory": "256Mi",
+      "cpu": "250m"
+    },
+    "requests": {
+      "memory": "128Mi",
+      "cpu": "100m"
+    }
+  },
+
+  "metrics": {
+    "cpu_percent": 22,
+    "memory_percent": 96,
+    "memory_rss_mb": 245,
+    "restart_rate_per_min": 1.8
+  },
+
+  "logs_tail": [
+    "INFO processing request id=8f21",
+    "INFO loading user session into memory",
+    "WARN cache size growing: 190MB",
+    "ERROR out of memory while processing payload size=38MB",
+    "FATAL killed"
+  ],
+
+  "cluster_events": [
+    "Normal Pulled Successfully pulled image",
+    "Warning BackOff Back-off restarting failed container",
+    "Warning OOMKilling Memory cgroup out of memory"
+  ]
+}

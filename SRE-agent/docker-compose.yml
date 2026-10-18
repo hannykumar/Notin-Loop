@@ -1,0 +1,250 @@
+services:
+  sre-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      executor:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SRE_DEFAULT_TOOL_TRANSPORT: mcp
+      SRE_DEFAULT_API_TOKEN: ${SRE_DEFAULT_API_TOKEN:-local-admin-token}
+      OPS_API_TOKENS: ${OPS_API_TOKENS:-local-admin-token|admin|Local Admin,viewer-demo-token|viewer|Viewer Demo,operator-demo-token|operator|Operator Demo,approver-demo-token|approver|Approver Demo}
+      SRE_DEMO_SERVICE_API_URL: http://demo-service:8088
+      SRE_GRAFANA_API_URL: http://grafana:3000
+      SRE_PROMETHEUS_API_URL: http://prometheus:9090
+      SRE_GRAFANA_USERNAME: admin
+      SRE_GRAFANA_PASSWORD: admin
+      GRAFANA_WEBHOOK_TOKEN: ${GRAFANA_WEBHOOK_TOKEN:-grafana-lab-token}
+      SRE_MCP_BACKEND: mock
+      GITOPS_REPO_DIR: /app/data/gitops_repo
+      DATABASE_URL: postgresql+psycopg://sre_agent:sre_agent@postgres:5432/sre_agent
+      REDIS_URL: redis://redis:6379/0
+      SRE_QUEUE_BACKEND: redis
+      EXECUTOR_BASE_URL: http://executor:8091
+      EXECUTOR_SHARED_TOKEN: sre-executor-local
+      EXECUTOR_TIMEOUT_SECONDS: ${EXECUTOR_TIMEOUT_SECONDS:-120}
+      SRE_OPS_API_TIMEOUT_SECONDS: ${SRE_OPS_API_TIMEOUT_SECONDS:-30}
+      SRE_OPS_APPROVE_TIMEOUT_SECONDS: ${SRE_OPS_APPROVE_TIMEOUT_SECONDS:-180}
+      SRE_OPS_PLAN_TIMEOUT_SECONDS: ${SRE_OPS_PLAN_TIMEOUT_SECONDS:-60}
+      SRE_REQUEST_TIMEOUT_SECONDS: ${SRE_REQUEST_TIMEOUT_SECONDS:-75}
+      SRE_OPS_POLL_TIMEOUT_SECONDS: ${SRE_OPS_POLL_TIMEOUT_SECONDS:-5}
+      SRE_OPS_POLL_INTERVAL_SECONDS: ${SRE_OPS_POLL_INTERVAL_SECONDS:-2}
+      SRE_AGENT_PLANNER_PROVIDER: ${SRE_AGENT_PLANNER_PROVIDER:-deterministic}
+      SRE_AGENT_PLANNER_MODEL: ${SRE_AGENT_PLANNER_MODEL:-llama3.2:1b}
+      SRE_AGENT_PLANNER_BASE_URL: ${SRE_AGENT_PLANNER_BASE_URL:-http://host.docker.internal:11434}
+      SRE_AGENT_PLANNER_TIMEOUT_SECONDS: ${SRE_AGENT_PLANNER_TIMEOUT_SECONDS:-90}
+      SRE_AGENT_PLANNER_MAX_RETRIES: ${SRE_AGENT_PLANNER_MAX_RETRIES:-0}
+      SRE_AGENT_PLANNER_TEMPERATURE: ${SRE_AGENT_PLANNER_TEMPERATURE:-0.1}
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./traces:/app/traces
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["uvicorn", "executor.api:app", "--host", "0.0.0.0", "--port", "8091"]
+    ports:
+      - "127.0.0.1:8091:8091"
+    environment:
+      DATABASE_URL: postgresql+psycopg://sre_agent:sre_agent@postgres:5432/sre_agent
+      REDIS_URL: redis://redis:6379/0
+      GITOPS_REPO_DIR: /app/data/gitops_repo
+      EXECUTOR_SHARED_TOKEN: sre-executor-local
+      EXECUTOR_TIMEOUT_SECONDS: ${EXECUTOR_TIMEOUT_SECONDS:-120}
+      SRE_DEMO_SERVICE_API_URL: http://demo-service:8088
+      SRE_GRAFANA_API_URL: http://grafana:3000
+      SRE_PROMETHEUS_API_URL: http://prometheus:9090
+      SRE_GRAFANA_USERNAME: admin
+      SRE_GRAFANA_PASSWORD: admin
+      SRE_ALERT_VERIFY_TIMEOUT_SECONDS: ${SRE_ALERT_VERIFY_TIMEOUT_SECONDS:-45}
+      SRE_ALERT_VERIFY_POLL_SECONDS: ${SRE_ALERT_VERIFY_POLL_SECONDS:-5}
+      SRE_VERIFICATION_STABILIZATION_SECONDS: ${SRE_VERIFICATION_STABILIZATION_SECONDS:-15}
+      SRE_VERIFICATION_SAMPLE_INTERVAL_SECONDS: ${SRE_VERIFICATION_SAMPLE_INTERVAL_SECONDS:-5}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: ["python", "-m", "runtime.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://sre_agent:sre_agent@postgres:5432/sre_agent
+      REDIS_URL: redis://redis:6379/0
+      SRE_QUEUE_BACKEND: redis
+      SRE_QUEUE_NAME: ${SRE_QUEUE_NAME:-sre_agent_jobs}
+      SRE_QUEUE_GROUP_TTL_SECONDS: ${SRE_QUEUE_GROUP_TTL_SECONDS:-900}
+      SRE_QUEUE_POP_TIMEOUT_SECONDS: ${SRE_QUEUE_POP_TIMEOUT_SECONDS:-5}
+      SRE_MCP_BACKEND: mock
+      GITOPS_REPO_DIR: /app/data/gitops_repo
+      EXECUTOR_BASE_URL: http://executor:8091
+      EXECUTOR_SHARED_TOKEN: sre-executor-local
+      SRE_AGENT_PLANNER_PROVIDER: ${SRE_AGENT_PLANNER_PROVIDER:-deterministic}
+      SRE_AGENT_PLANNER_MODEL: ${SRE_AGENT_PLANNER_MODEL:-llama3.2:1b}
+      SRE_AGENT_PLANNER_BASE_URL: ${SRE_AGENT_PLANNER_BASE_URL:-http://host.docker.internal:11434}
+      SRE_AGENT_PLANNER_TIMEOUT_SECONDS: ${SRE_AGENT_PLANNER_TIMEOUT_SECONDS:-90}
+      SRE_AGENT_PLANNER_MAX_RETRIES: ${SRE_AGENT_PLANNER_MAX_RETRIES:-0}
+      SRE_AGENT_PLANNER_TEMPERATURE: ${SRE_AGENT_PLANNER_TEMPERATURE:-0.1}
+      SRE_REQUEST_TIMEOUT_SECONDS: ${SRE_REQUEST_TIMEOUT_SECONDS:-75}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./traces:/app/traces
+      - ./data:/app/data
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sre_agent
+      POSTGRES_USER: sre_agent
+      POSTGRES_PASSWORD: sre_agent
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sre_agent -d sre_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  pgadmin:
+    profiles: ["admin-tools"]
+    image: dpage/pgadmin4
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@sre-agent.dev
+      PGADMIN_DEFAULT_PASSWORD: sre-agent-admin
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+
+  redisinsight:
+    profiles: ["admin-tools"]
+    image: redis/redisinsight:latest
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5540:5540"
+    volumes:
+      - redisinsight_data:/data
+
+  demo-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "lab.demo_service:app", "--host", "0.0.0.0", "--port", "8088"]
+    profiles: ["alert-lab"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8088:8088"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/status', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+  trafficgen:
+    image: busybox:1.36
+    profiles: ["alert-lab"]
+    depends_on:
+      demo-service:
+        condition: service_healthy
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - while true; do wget -q -O - http://demo-service:8088/ >/dev/null 2>&1 || true; sleep 1; done
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["alert-lab"]
+    depends_on:
+      demo-service:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: ["alert-lab"]
+    depends_on:
+      prometheus:
+        condition: service_started
+      sre-agent:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  redisinsight_data:
+  grafana_data:

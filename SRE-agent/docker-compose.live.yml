@@ -1,0 +1,73 @@
+services:
+  kubectl-mcp:
+    image: self-healing-sre-executor:latest
+    command: ["uvicorn", "integrations.kubectl_mcp_server:app", "--host", "0.0.0.0", "--port", "8088"]
+    restart: unless-stopped
+    networks: [default, kind]
+    environment:
+      KUBECONFIG: /app/secrets/kubeconfig
+      MCP_ALLOW_WRITES: "1"
+      MCP_APPROVAL_TOKEN: ${MCP_APPROVAL_TOKEN:-sre-live-executor}
+      MCP_NS_ALLOWLIST: ${MCP_NS_ALLOWLIST:-sre-lab}
+    volumes:
+      - ${KUBECONFIG}:/app/secrets/kubeconfig:ro
+
+  sre-agent:
+    networks: [default, kind]
+    environment:
+      SRE_MCP_BACKEND: live
+      PROMETHEUS_BASE_URL: ${PROMETHEUS_BASE_URL}
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      SRE_LOGS_BACKEND: ${SRE_LOGS_BACKEND:-loki}
+      PROMETHEUS_HTTP_REQUESTS_METRIC: ${PROMETHEUS_HTTP_REQUESTS_METRIC:-http_requests_total}
+      PROMETHEUS_RATE_WINDOW: ${PROMETHEUS_RATE_WINDOW:-5m}
+      SRE_TOOL_TIMEOUT_SECONDS: ${SRE_TOOL_TIMEOUT_SECONDS:-15}
+      SRE_TOOL_MAX_RETRIES: ${SRE_TOOL_MAX_RETRIES:-2}
+      KUBECONFIG: /app/secrets/kubeconfig
+      KUBECTL_CONTEXT: ${KUBECTL_CONTEXT}
+    volumes:
+      - ${KUBECONFIG}:/app/secrets/kubeconfig:ro
+
+  worker:
+    networks: [default, kind]
+    environment:
+      SRE_MCP_BACKEND: live
+      PROMETHEUS_BASE_URL: ${PROMETHEUS_BASE_URL}
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      SRE_LOGS_BACKEND: ${SRE_LOGS_BACKEND:-loki}
+      PROMETHEUS_HTTP_REQUESTS_METRIC: ${PROMETHEUS_HTTP_REQUESTS_METRIC:-http_requests_total}
+      PROMETHEUS_RATE_WINDOW: ${PROMETHEUS_RATE_WINDOW:-5m}
+      SRE_TOOL_TIMEOUT_SECONDS: ${SRE_TOOL_TIMEOUT_SECONDS:-15}
+      SRE_TOOL_MAX_RETRIES: ${SRE_TOOL_MAX_RETRIES:-2}
+      KUBECONFIG: /app/secrets/kubeconfig
+      KUBECTL_CONTEXT: ${KUBECTL_CONTEXT}
+    volumes:
+      - ${KUBECONFIG}:/app/secrets/kubeconfig:ro
+
+  executor:
+    networks: [default, kind]
+    depends_on:
+      kubectl-mcp:
+        condition: service_started
+    environment:
+      SRE_MCP_BACKEND: live
+      PROMETHEUS_BASE_URL: ${PROMETHEUS_BASE_URL}
+      LOKI_BASE_URL: ${LOKI_BASE_URL}
+      SRE_LOGS_BACKEND: ${SRE_LOGS_BACKEND:-loki}
+      PROMETHEUS_HTTP_REQUESTS_METRIC: ${PROMETHEUS_HTTP_REQUESTS_METRIC:-http_requests_total}
+      PROMETHEUS_RATE_WINDOW: ${PROMETHEUS_RATE_WINDOW:-5m}
+      SRE_TOOL_TIMEOUT_SECONDS: ${SRE_TOOL_TIMEOUT_SECONDS:-15}
+      SRE_TOOL_MAX_RETRIES: ${SRE_TOOL_MAX_RETRIES:-2}
+      KUBECONFIG: /app/secrets/kubeconfig
+      KUBECTL_CONTEXT: ${KUBECTL_CONTEXT}
+      MCP_SERVER_URL: http://kubectl-mcp:8088
+      MCP_APPROVAL_TOKEN: ${MCP_APPROVAL_TOKEN:-sre-live-executor}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${KUBECONFIG}:/app/secrets/kubeconfig:ro
+
+networks:
+  kind:
+    external: true
+    name: kind

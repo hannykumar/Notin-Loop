@@ -1,0 +1,62 @@
+{
+  "incident_id": "INC-002",
+  "title": "API returning 503 errors",
+  "description": "Users are getting 503 errors. Logs show upstream timeout to payments dependency.",
+  "service": "api",
+  "namespace": "prod",
+  "service_dependencies": {
+    "service": "api",
+    "namespace": "prod",
+    "dependencies": [
+      {"name": "payments", "namespace": "prod", "status": "unavailable", "replicas": 0, "ready_replicas": 0}
+    ],
+    "unavailable": [
+      {"name": "payments", "namespace": "prod", "status": "unavailable", "replicas": 0, "ready_replicas": 0}
+    ],
+    "unavailable_count": 1
+  },
+
+  "pod_status": {
+    "pod_name": "api-6fdfd5c8c9-k9z77",
+    "phase": "Running",
+    "restarts": 2,
+    "reason": "Running"
+  },
+
+  "pod_describe": {
+    "last_state": {
+      "terminated": {
+        "reason": "Completed",
+        "exit_code": 0
+      }
+    },
+    "limits": {
+      "memory": "512Mi",
+      "cpu": "500m"
+    },
+    "requests": {
+      "memory": "256Mi",
+      "cpu": "250m"
+    }
+  },
+
+  "metrics": {
+    "cpu_percent": 35,
+    "memory_percent": 42,
+    "error_rate_percent": 18,
+    "p95_latency_ms": 2400
+  },
+
+  "logs_tail": [
+    "INFO request id=19aa route=/checkout",
+    "WARN upstream call payments timed out after 2.0s",
+    "ERROR returning 503 due to upstream timeout payments",
+    "WARN upstream call payments timed out after 2.0s",
+    "ERROR returning 503 due to upstream timeout payments"
+  ],
+
+  "cluster_events": [
+    "Normal Pulled Successfully pulled image",
+    "Normal Started Started container api"
+  ]
+}

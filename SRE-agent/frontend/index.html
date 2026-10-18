@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11151c" />
+    <title>SRE Copilot · Incident workbench</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="#incidents"
+        ><span class="brand-mark">S</span> SRE Copilot</a
+      >
+      <p class="nav-label">OPERATIONS</p>
+      <nav aria-label="Main navigation">
+        <a href="#incidents" data-page="incidents">◈ <span>Incidents</span></a>
+        <a href="#evaluation" data-page="evaluation"
+          >▥ <span>Model evaluation</span></a
+        >
+        <a href="#settings" data-page="settings"
+          >⚙ <span>Runtime & access</span></a
+        >
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot"></span> Human-approved remediation<br /><small
+          >Local development workspace</small
+        >
+      </div>
+    </aside>
+    <div class="workspace">
+      <header>
+        <span id="breadcrumb">Operations / Incidents</span
+        ><span id="connection" role="status">Connecting…</span>
+      </header>
+      <div id="error" role="alert" hidden></div>
+      <main id="main" tabindex="-1">
+        <p class="empty">Connecting to the incident runtime…</p>
+      </main>
+    </div>
+  </body>
+</html>

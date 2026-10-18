@@ -1,0 +1,60 @@
+{
+  "incident_id": "INC-007",
+  "title": "API release regression after recent deploy",
+  "description": "API errors increased shortly after the latest release and users report failed requests on the new version.",
+  "service": "api",
+  "namespace": "prod",
+  "expected_incident_type": "DeploymentRegression",
+  "config_management": "gitops",
+  "gitops_manifest_path": "clusters/prod/api.json",
+  "current_version": "api-2026.03.12.2",
+  "previous_version": "api-2026.03.11.7",
+  "recent_deploys": [
+    {"version": "api-2026.03.12.2", "minutes_ago": 9, "actor": "deploy-bot", "status": "completed"},
+    {"version": "api-2026.03.11.7", "minutes_ago": 1180, "actor": "deploy-bot", "status": "completed"}
+  ],
+
+  "pod_status": {
+    "pod_name": "api-6fdfd5c8c9-rel42",
+    "phase": "Running",
+    "restarts": 0,
+    "reason": "Running",
+    "replicas": 2
+  },
+
+  "pod_describe": {
+    "last_state": {
+      "terminated": {
+        "reason": "Completed",
+        "exit_code": 0
+      }
+    },
+    "limits": {
+      "memory": "512Mi",
+      "cpu": "500m"
+    },
+    "requests": {
+      "memory": "256Mi",
+      "cpu": "250m"
+    }
+  },
+
+  "metrics": {
+    "cpu_percent": 58,
+    "memory_percent": 55,
+    "error_rate_percent": 9,
+    "p95_latency_ms": 1320
+  },
+
+  "logs_tail": [
+    "INFO deploy version api-2026.03.12.2 now serving traffic",
+    "ERROR feature flag path failing after deploy",
+    "WARN rollout regression suspected on checkout endpoint",
+    "ERROR user request failed on new release"
+  ],
+
+  "cluster_events": [
+    "Normal Pulled Successfully pulled image",
+    "Normal Started Started container api"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "demo-api",
+    "namespace": "sre-lab"
+  },
+  "spec": {
+    "replicas": 1,
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "demo-api",
+            "image": "demo-api:known-good"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,74 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: demo-api
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames: [sre-lab]
+  selector:
+    matchLabels:
+      app: demo-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 5s
+      scrapeTimeout: 4s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-agent-prometheus
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: prometheus
+    operator.prometheus.io/name: monitoring-kube-prometheus-prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+      nodePort: 30900
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-agent-loki
+  namespace: monitoring
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/component: single-binary
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/name: loki
+  ports:
+    - name: http
+      port: 3100
+      targetPort: http-metrics
+      nodePort: 30100
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sre-agent-lab
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: sre-agent-lab
+      rules:
+        - alert: DemoAPIHigh5xx
+          expr: |
+            sum(rate(demo_http_requests_total{path="/",status=~"5.."}[1m]))
+            / clamp_min(sum(rate(demo_http_requests_total{path="/"}[1m])), 0.001) > 0.2
+          for: 15s
+          labels:
+            severity: critical
+            service: demo-api
+            namespace: sre-lab
+          annotations:
+            summary: Demo API is returning more than 20% HTTP 5xx responses

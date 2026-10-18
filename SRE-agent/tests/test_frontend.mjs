@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {observation, recovery, hypotheses, evaluationCases} from '../frontend/evidence.mjs';
+
+const hostile = '<img src=x onerror=alert(1)>';
+assert(!observation({log: hostile}).includes('<img'));
+assert(!hypotheses([{cause: hostile, confidence: .5}]).includes('<img'));
+assert.equal(recovery({execution_mode: 'preview'}), '');
+const rendered = recovery({execution_mode: 'simulate', verification: {checks: [{metric: 'error_rate_percent', before: 50, after: 0, passed: true}]}});
+assert(rendered.includes('Fixture simulation'));
+assert(rendered.includes('<td>0</td>'));
+assert(rendered.includes('Passed'));
+const logs = recovery({execution_mode: 'simulate', verification: {checks: [{type: 'log_absent', tokens: ['503', hostile], passed: false}]}});
+assert(logs.includes('Logs exclude: 503,'));
+assert(logs.includes('<td>Found</td>'));
+assert(!logs.includes('<img'));
+const cases = evaluationCases({hybrid_full: {rows: [{incident: hostile, expected: 'DNSFailure', predicted: 'Unknown', type_match: false, planner_error: hostile}]}});
+assert(!cases.includes('<img'));
+assert(cases.includes('Mismatch'));
+assert(cases.includes('DNSFailure'));
+const uncertain = hypotheses([{cause: 'DNS', contradicting_evidence_ids: ['E2'], evidence_needed: ['Resolver logs']}]);
+assert(uncertain.includes('Contradicting evidence: E2'));
+assert(uncertain.includes('Still needed: Resolver logs'));

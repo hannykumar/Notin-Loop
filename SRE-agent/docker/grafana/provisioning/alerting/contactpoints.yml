@@ -1,0 +1,12 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: sre-agent-webhook
+    receivers:
+      - uid: sre-agent-webhook
+        type: webhook
+        settings:
+          url: http://sre-agent:8090/alerts/grafana/webhook?token=grafana-lab-token
+          httpMethod: POST
+          maxAlerts: 1

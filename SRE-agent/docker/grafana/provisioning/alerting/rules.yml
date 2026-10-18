@@ -1,0 +1,193 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: sre-agent-alert-lab
+    folder: SRE Agent Lab
+    interval: 10s
+    rules:
+      - uid: demo_api_high_5xx
+        title: Demo API High 5xx Rate
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 120
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: sum(rate(demo_http_requests_total{path="/",status=~"5.."}[1m])) / clamp_min(sum(rate(demo_http_requests_total{path="/"}[1m])), 0.001)
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.2
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: OK
+        execErrState: Error
+        for: 30s
+        annotations:
+          summary: Demo API is serving too many 5xx responses.
+          description: The alert lab demo service is returning 503 responses and should map to INC-002.
+        labels:
+          severity: warning
+          service: api
+          lab: alert-lab
+          incident_id: INC-002
+          scenario: service503
+
+      - uid: demo_checkout_crashloop_signal
+        title: Demo Checkout CrashLoop OOM Signal
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 120
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: demo_incident_signal{scenario="crashloop",incident_id="INC-001"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: OK
+        execErrState: Error
+        for: 15s
+        annotations:
+          summary: Demo service is emitting a CrashLoop/OOM signal.
+          description: The alert lab demo service is simulating a CrashLoopBackOff OOM scenario and should map to INC-001.
+        labels:
+          severity: warning
+          service: checkout
+          lab: alert-lab
+          incident_id: INC-001
+          scenario: crashloop
+
+      - uid: demo_worker_dns_failure_signal
+        title: Demo Worker DNS Failure Signal
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 120
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: demo_incident_signal{scenario="dnsfailure",incident_id="INC-003"}
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: OK
+        execErrState: Error
+        for: 15s
+        annotations:
+          summary: Demo service is emitting a DNS failure signal.
+          description: The alert lab demo service is simulating resolver failures and should map to INC-003.
+        labels:
+          severity: warning
+          service: worker
+          lab: alert-lab
+          incident_id: INC-003
+          scenario: dnsfailure

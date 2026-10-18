@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oom-worker
+  namespace: sre-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: oom-worker}
+  template:
+    metadata:
+      labels: {app: oom-worker, service: worker}
+    spec:
+      containers:
+        - name: worker
+          image: python:3.12-alpine
+          command: ["python", "-c", "import time; chunks=[]; [(chunks.append(bytearray(8*1024*1024)), time.sleep(.2)) for _ in range(32)]; time.sleep(60)"]
+          resources:
+            requests: {memory: 16Mi}
+            limits: {memory: 32Mi}

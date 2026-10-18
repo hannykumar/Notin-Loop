@@ -1,0 +1,11 @@
+scikit-learn==1.5.2
+langgraph==0.2.34
+pytest==8.3.3
+typing-extensions==4.12.2
+fastapi==0.115.0
+uvicorn==0.30.6
+mcp==1.12.4
+sqlalchemy==2.0.37
+psycopg[binary]==3.2.3
+redis==5.2.1
+prometheus-client==0.21.0

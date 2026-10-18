@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "SRE Agent Postgres",
+      "Group": "SRE Agent",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "sre_agent",
+      "Username": "sre_agent",
+      "SSLMode": "prefer",
+      "Shared": true
+    }
+  }
+}

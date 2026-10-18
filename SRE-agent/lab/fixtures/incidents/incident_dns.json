@@ -1,0 +1,50 @@
+{
+  "incident_id": "INC-003",
+  "title": "Multiple services failing DNS resolution",
+  "description": "Multiple services failing, logs say could not resolve host and NXDOMAIN errors.",
+  "service": "worker",
+  "namespace": "prod",
+
+  "pod_status": {
+    "pod_name": "worker-5b7c9f9f9f-hh123",
+    "phase": "Running",
+    "restarts": 1,
+    "reason": "Running"
+  },
+
+  "pod_describe": {
+    "last_state": {
+      "terminated": {
+        "reason": "Completed",
+        "exit_code": 0
+      }
+    },
+    "limits": {
+      "memory": "256Mi",
+      "cpu": "250m"
+    },
+    "requests": {
+      "memory": "128Mi",
+      "cpu": "100m"
+    }
+  },
+
+  "metrics": {
+    "dns_error_rate_percent": 22,
+    "error_rate_percent": 12,
+    "p95_latency_ms": 3100
+  },
+
+  "logs_tail": [
+    "INFO processing job id=77",
+    "ERROR could not resolve host: payments.prod.svc.cluster.local",
+    "WARN retrying request",
+    "ERROR NXDOMAIN for payments.prod.svc.cluster.local",
+    "ERROR could not resolve host: inventory.prod.svc.cluster.local"
+  ],
+
+  "cluster_events": [
+    "Warning DNSConfigForming Nameserver limits exceeded",
+    "Warning Unhealthy Readiness probe failed"
+  ]
+}

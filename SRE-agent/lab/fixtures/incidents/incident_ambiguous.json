@@ -1,0 +1,45 @@
+{
+  "incident_id": "INC-004",
+  "title": "Intermittent checkout slowness with weak signals",
+  "description": "Checkout feels slow but alerts are noisy and there is no clear failure pattern yet.",
+  "service": "checkout",
+  "namespace": "prod",
+  "expected_incident_type": "Unknown",
+  "should_confirm": false,
+
+  "pod_status": {
+    "pod_name": "checkout-7c9f7c7c9f-def34",
+    "phase": "Running",
+    "restarts": 0,
+    "reason": "Running",
+    "replicas": 2
+  },
+
+  "pod_describe": {
+    "last_state": {
+      "terminated": {
+        "reason": "Completed",
+        "exit_code": 0
+      }
+    }
+  },
+
+  "metrics": {
+    "cpu_percent": 31,
+    "memory_percent": 57,
+    "error_rate_percent": 1,
+    "p95_latency_ms": 430
+  },
+
+  "logs_tail": [
+    "INFO request id=44 route=/checkout",
+    "INFO request id=45 route=/checkout",
+    "WARN client retry observed from edge proxy",
+    "INFO cache warmup complete"
+  ],
+
+  "cluster_events": [
+    "Normal ScalingReplicaSet Scaled up replica set checkout",
+    "Normal Pulled Successfully pulled image"
+  ]
+}
