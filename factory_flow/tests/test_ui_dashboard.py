@@ -175,6 +175,7 @@ def test_rollback_endpoint_uses_manual_human_path(runs: Path, monkeypatch: pytes
 
     assert res.json()["status"] == "pass"
     assert calls[0][0] == "release-1" and calls[0][1]["actor"] == "human"
+    assert calls[0][1]["audit_append"] is audit.append      # the manual rollback is on the audit trail
 
 
 def test_page_is_one_self_contained_file(runs: Path) -> None:
