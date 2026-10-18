@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -20,6 +21,42 @@ FIX_SYSTEM = (
 
 def is_unified_diff(text: str) -> bool:
     return "--- a/" in text and "+++ b/" in text and "@@" in text
+
+
+HUNK = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$")
+
+
+def normalize_diff(text: str) -> str:
+    """Tidy LLM diff output: drop text before the first header, unindent header lines, recount hunk sizes.
+
+    Models often emit a stray leading space before '--- a/' or miscount '@@' line ranges; both make git apply fail.
+    """
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.lstrip().startswith("--- a/")), None)
+    if start is None:
+        return text
+    out: list[str] = []
+    i = start
+    while i < len(lines):
+        stripped = lines[i].lstrip()
+        match = HUNK.match(stripped)
+        if not match:   # outside a hunk: keep file headers (unindented), drop prose
+            if stripped.startswith(("--- ", "+++ ", "diff --git ", "index ")):
+                out.append(stripped)
+            i += 1
+            continue
+        body = []
+        i += 1
+        while i < len(lines) and not HUNK.match(lines[i].lstrip()) and not lines[i].lstrip().startswith(("--- a/", "diff --git ")):
+            body.append(lines[i] if lines[i] else " ")   # an empty line inside a hunk is blank context
+            i += 1
+        while body and body[-1].strip() == "":          # trailing blank lines are padding, not context
+            body.pop()
+        old = sum(1 for l in body if l[:1] in (" ", "-"))
+        new = sum(1 for l in body if l[:1] in (" ", "+"))
+        out.append(f"@@ -{match.group(1)},{old} +{match.group(2)},{new} @@{match.group(3)}")
+        out.extend(body)
+    return "\n".join(out) + "\n"
 
 
 class ScriptedFixer:
@@ -56,7 +93,7 @@ class LLMFixer:
         for _ in range(self.attempts):
             diff = llm.complete(FIX_SYSTEM, user)
             if is_unified_diff(diff):
-                return diff + "\n"  # complete() trims the trailing newline git apply needs
+                return normalize_diff(diff)  # also restores the trailing newline git apply needs
         raise ValueError(f"LLM output is not a unified diff after {self.attempts} attempts")
 
 

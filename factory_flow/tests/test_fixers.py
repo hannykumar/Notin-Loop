@@ -105,3 +105,18 @@ def test_missing_inputs_unsure(setup):
     state, workspace, _ = setup
     state.failing_test = None
     assert fixers.run_fix(state, fixers.ScriptedFixer(CART_FIX), workspace=workspace).status == "unsure"
+
+
+def test_normalize_diff_fixes_real_llm_output(tmp_path):
+    """Real Kimi-K2.7-Code output: stray leading space before the header made git apply fail."""
+    from factory.fixers import normalize_diff
+    raw = (' --- a/app/cart.py\n+++ b/app/cart.py\n@@ -4,4 +4,4 @@\n \n def cart_total(cart_id: str) -> float:\n'
+           '     cart = CARTS[cart_id]\n-    return sum(item["price"] * item["qty"] for item in cart["items"])\n'
+           '+    return sum(item["price"] * item["qty"] for item in cart.get("items", []))\n')
+    miscounted = raw.replace("@@ -4,4 +4,4 @@", "@@ -4,9 +4,2 @@")
+    ws = StubWorkspace(make_mini_repo(tmp_path))
+    for text in (raw, miscounted, "Here is the fix:\n```diff\n" + raw):
+        diff = normalize_diff(text)
+        assert diff.startswith("--- a/app/cart.py\n") and "@@ -4,4 +4,4 @@" in diff
+        ws.apply_diff(ws.fresh_worktree("prod"), diff)   # raises if git rejects it
+    ws.cleanup()
